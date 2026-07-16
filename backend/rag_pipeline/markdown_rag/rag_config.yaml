@@ -1,0 +1,26 @@
+embedding:
+  model: my-qwen3-embed:latest
+  base_url: http://localhost:11434
+rag:
+  splitter:
+    headers:
+    - '#'
+    - '##'
+    - '###'
+    return_each_line: false
+    strip_headers: false
+    enable_char_split: false
+    chunk_size: 1000
+    chunk_overlap: 200
+  hnsw:
+    space: cosine
+    ef_construction: 200
+    max_neighbors: 32
+    ef_search: 200
+    num_threads: 4
+    batch_size: 100
+    sync_threshold: 1000
+    resize_factor: 1.2
+  processing:
+    preview_output_dir: preview
+    enable_interactive: true

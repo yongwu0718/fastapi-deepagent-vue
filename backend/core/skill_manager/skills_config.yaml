@@ -1,0 +1,7 @@
+enabled:
+- billing_analyze
+- gonghao-baowen-writing
+- subagents
+- task-planner
+- vocab-tutor
+- vue-best-practices

@@ -1,0 +1,35 @@
+active_provider: ali
+deepseek:
+  model: deepseek-v4-flash
+  base_url: https://api.deepseek.com
+  json_model: deepseek-v4-pro
+  reasoning_effort: max
+  extra_body:
+    thinking:
+      type: enabled
+  json_kwargs:
+    response_format:
+      type: json_object
+ollama:
+  model: qwen3.5
+  base_url: http://localhost:11434
+  reasoning: low
+aliyun:
+  model: qwen3.6-flash-2026-04-16
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  enable_thinking: true
+openai:
+  model: deepseek-v4-pro-202606
+  base_url: https://tokenhub.tencentmaas.com/v1
+  extra_body:
+    thinking:
+      type: enabled
+moonshot:
+  model: kimi-k2.5
+  thinking: true
+embedding:
+  model: my-qwen3-embed:latest
+  base_url: http://localhost:11434
+reranker:
+  model: gte-rerank-v2
+  top_n: 10

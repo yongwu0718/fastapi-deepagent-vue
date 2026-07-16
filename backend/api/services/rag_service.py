@@ -1,0 +1,531 @@
+"""RAG Pipeline 业务逻辑 —— 接收上传文件，完成分割、向量化入库、删除操作。"""
+
+import os
+import asyncio
+import yaml
+from typing import Optional, Any
+
+from fastapi import UploadFile
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+
+from backend.config.env_settings import CHROMA_DB, COLLECTION_NAME
+from backend.rag_pipeline.markdown_rag.rag_setting import (
+    EMBEDDING_MODEL, EMBEDDING_BASE_URL,
+    RAG_SPLITTER_HEADERS, RAG_SPLITTER_RETURN_EACH_LINE, RAG_SPLITTER_STRIP_HEADERS,
+    RAG_PROCESSING_PREVIEW_DIR,
+    RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP, RAG_ENABLE_CHAR_SPLIT,
+    reload_rag_config,
+)
+from backend.rag_pipeline.markdown_rag.save_VectorStore import (
+    MarkdownSplitter,
+    VectorStoreCreator,
+)
+from backend.api.schemas.rag_pipeline import (
+    ChunkDetail,
+    RAGProcessResult,
+    RAGProcessResponse,
+    RAGDeleteResponse,
+    RAGHealthResponse,
+    SplitConfig,
+    RAGFullConfigModel,
+)
+from backend.api.utils.exceptions import AppException, ErrorCode
+from backend.config.logger import get_logger
+
+logger = get_logger(__name__)
+
+# ── 支持的扩展名 ──
+SUPPORTED_RAG_EXTENSIONS = {".md"}
+
+# ── 向量库单例 ──
+_vectorstore: Optional[Chroma] = None
+
+
+def _get_vectorstore() -> Chroma:
+    """获取或初始化 Chroma 向量库实例（单例）。"""
+    global _vectorstore
+    if _vectorstore is None:
+        try:
+            creator = VectorStoreCreator(
+                collection_name=COLLECTION_NAME,
+                persist_directory=CHROMA_DB,
+                model=EMBEDDING_MODEL,
+                base_url=EMBEDDING_BASE_URL,
+            )
+            _vectorstore = creator.vectorstore
+            logger.info("向量库已初始化 | collection=%s | dir=%s", COLLECTION_NAME, CHROMA_DB)
+        except Exception as e:
+            logger.exception("向量库初始化失败")
+            raise AppException(
+                status_code=500,
+                error_code=ErrorCode.RAG_VECTORSTORE_ERROR,
+                detail=f"向量库初始化失败: {e}",
+            )
+    return _vectorstore
+
+
+def _build_split_config() -> SplitConfig:
+    """构造当前分割配置（用于返回给前端）。"""
+    return SplitConfig(
+        headers=list(RAG_SPLITTER_HEADERS),
+        return_each_line=RAG_SPLITTER_RETURN_EACH_LINE,
+        strip_headers=RAG_SPLITTER_STRIP_HEADERS,
+        enable_char_split=RAG_ENABLE_CHAR_SPLIT,
+        chunk_size=RAG_CHUNK_SIZE,
+        chunk_overlap=RAG_CHUNK_OVERLAP,
+    )
+
+
+def _extract_header_path(chunk: Document) -> Optional[str]:
+    """从 Document.metadata 中提取标题路径。
+
+    ExperimentalMarkdownSyntaxTextSplitter 会给每个 chunk 附加类似
+    ``{"Header 1": "xxx", "Header 2": "yyy"}`` 的元数据，
+    这里按层级拼接成 "# 概述 > ## 背景"。
+    """
+    path_parts: list[str] = []
+    for level in range(1, len(RAG_SPLITTER_HEADERS) + 1):
+        key = f"Header {level}"
+        val = chunk.metadata.get(key)
+        if val is not None:
+            # ExperimentalMarkdownSyntaxTextSplitter 返回的是完整标题行
+            val_str = str(val).strip()
+            if val_str:
+                path_parts.append(val_str)
+    return " > ".join(path_parts) if path_parts else None
+
+
+def _build_chunk_details(chunks: list[Document]) -> list[ChunkDetail]:
+    """遍历分块列表，构造 ChunkDetail 列表。"""
+    details: list[ChunkDetail] = []
+    for i, chunk in enumerate(chunks):
+        content = chunk.page_content
+        header_path = _extract_header_path(chunk)
+        # 如果 chunk 已经被二级字符切分切过，RecursiveCharacterTextSplitter
+        # 不会添加新的元数据，但标题路径可能会保留下来
+        details.append(ChunkDetail(
+            index=i + 1,
+            content_length=len(content),
+            preview=content,
+            header_path=header_path,
+            is_char_split=bool(RAG_ENABLE_CHAR_SPLIT and len(content) <= RAG_CHUNK_SIZE),
+        ))
+    return details
+
+
+def _write_enhanced_preview(
+    chunks: list[Document],
+    details: list[ChunkDetail],
+    output_path: str,
+    filename: str,
+) -> None:
+    """生成增强版预览 — 每块标注序号、大小、标题路径。"""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    lines: list[str] = []
+    lines.append(f"# 分块预览: {filename}")
+    lines.append("")
+    lines.append(f"**总块数**: {len(chunks)}")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    for detail, chunk in zip(details, chunks):
+        lines.append(f"## Chunk {detail.index}")
+        lines.append("")
+        lines.append(f"- **字符数**: {detail.content_length}")
+        if detail.header_path:
+            lines.append(f"- **标题路径**: {detail.header_path}")
+        lines.append("")
+        lines.append(chunk.page_content)
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    logger.info("增强预览已写入 | path=%s | chunks=%d", output_path, len(details))
+
+
+async def _process_one_file(
+    filename: str,
+    md_text: str,
+    file_size: int,
+    splitter: MarkdownSplitter,
+    vectorstore: Chroma,
+    output_preview_dir: str,
+    loop: asyncio.AbstractEventLoop,
+    preview_only: bool = False,
+) -> RAGProcessResult:
+    """处理单个文件的核心逻辑：格式校验 → 分块 → 预览 →（可选）入库。
+
+    Args:
+        filename: 文件名（用于日志和结果）
+        md_text: 文件文本内容
+        file_size: 文件字节数
+        splitter: 已初始化的分割器
+        vectorstore: 向量库实例
+        output_preview_dir: 预览输出目录
+        loop: 事件循环
+        preview_only: True 时只预览分块，不写入向量库
+
+    Returns:
+        RAGProcessResult
+    """
+    # ── 1. 校验格式 ──
+    ext = os.path.splitext(filename.lower())[1]
+    if ext not in SUPPORTED_RAG_EXTENSIONS:
+        raise ValueError(
+            f"不支持的文件格式: {ext}（仅支持 {', '.join(SUPPORTED_RAG_EXTENSIONS)}）"
+        )
+
+    if not md_text.strip():
+        raise ValueError("文件内容为空")
+
+    # ── 2. 分块 ──
+    chunks: list[Document] = await loop.run_in_executor(
+        None, splitter.split_by_headers, md_text,
+    )
+    logger.info("分块完成 | file=%s | chunks=%d | preview_only=%s", filename, len(chunks), preview_only)
+
+    # ── 3. 构建分块详情 ──
+    chunk_details = _build_chunk_details(chunks)
+
+    # ── 4. 生成预览文件 ──
+    base_name = os.path.splitext(filename)[0]
+    preview_path = os.path.join(output_preview_dir, f"{base_name}_chunks_preview.md")
+    await loop.run_in_executor(
+        None, _write_enhanced_preview, chunks, chunk_details, preview_path, filename,
+    )
+
+    # ── 5. 入库（preview_only 模式下跳过）──
+    if not preview_only and chunks:
+        await loop.run_in_executor(None, lambda: vectorstore.add_documents(chunks))
+        logger.info("入库完成 | file=%s | chunks=%d", filename, len(chunks))
+
+    return RAGProcessResult(
+        filename=filename,
+        file_size=file_size,
+        chunks_count=len(chunks),
+        status="success",
+        chunks=chunk_details,
+    )
+
+
+async def _process_batch(
+    items: list[tuple[str, str, int]],
+    preview_dir: Optional[str] = None,
+    preview_only: bool = False,
+) -> RAGProcessResponse:
+    """批量处理文件内容列表的可复用流水线。
+
+    Args:
+        items: [(filename, md_text, file_size), ...]
+        preview_dir: 预览输出目录
+        preview_only: True 时仅预览分块不写入向量库
+    """
+    results: list[RAGProcessResult] = []
+    success_count = 0
+    failed_count = 0
+    total_chunks = 0
+    split_config = _build_split_config()
+
+    try:
+        vectorstore = _get_vectorstore()
+    except AppException:
+        raise
+
+    splitter = MarkdownSplitter()
+    output_preview_dir = preview_dir or RAG_PROCESSING_PREVIEW_DIR
+    loop = asyncio.get_running_loop()
+
+    for filename, md_text, file_size in items:
+        try:
+            logger.info("开始处理 | file=%s | size=%d", filename, file_size)
+            result = await _process_one_file(
+                filename=filename,
+                md_text=md_text,
+                file_size=file_size,
+                splitter=splitter,
+                vectorstore=vectorstore,
+                output_preview_dir=output_preview_dir,
+                loop=loop,
+                preview_only=preview_only,
+            )
+            results.append(result)
+            success_count += 1
+            total_chunks += result.chunks_count
+
+        except UnicodeDecodeError:
+            failed_count += 1
+            logger.warning("文件编码错误 | file=%s", filename)
+            results.append(RAGProcessResult(
+                filename=filename, file_size=0, chunks_count=0,
+                status="error", error="文件编码不是合法的 UTF-8",
+            ))
+
+        except ValueError as e:
+            failed_count += 1
+            logger.warning("文件校验失败 | file=%s | error=%s", filename, e)
+            results.append(RAGProcessResult(
+                filename=filename, file_size=0, chunks_count=0,
+                status="error", error=str(e),
+            ))
+
+        except Exception:
+            failed_count += 1
+            logger.exception("文件处理异常 | file=%s", filename)
+            results.append(RAGProcessResult(
+                filename=filename, file_size=0, chunks_count=0,
+                status="error", error="处理过程中发生未知错误",
+            ))
+
+    try:
+        collection_count = vectorstore._collection.count()
+    except Exception:
+        collection_count = -1
+
+    return RAGProcessResponse(
+        total_files=len(items),
+        success_count=success_count,
+        failed_count=failed_count,
+        total_chunks=total_chunks,
+        collection_count=collection_count,
+        split_config=split_config,
+        results=results,
+    )
+
+
+# ═══════════════════════════════════════════
+#  公开接口：两种输入模式
+# ═══════════════════════════════════════════
+
+async def process_files_by_path(
+    file_paths: list[str],
+    preview_dir: Optional[str] = None,
+    preview_only: bool = False,
+) -> RAGProcessResponse:
+    """【本地路径模式】从磁盘读取 .md 文件并处理入库。
+
+    Args:
+        file_paths: 文件绝对路径列表。
+        preview_dir: 预览输出目录。
+        preview_only: True 时仅预览分块不写入向量库。
+    """
+    items: list[tuple[str, str, int]] = []
+
+    for file_path in file_paths:
+        try:
+            if not os.path.isfile(file_path):
+                raise FileNotFoundError(f"文件不存在: {file_path}")
+
+            filename = os.path.basename(file_path)
+            with open(file_path, "r", encoding="utf-8") as f:
+                md_text = f.read()
+            file_size = os.path.getsize(file_path)
+
+            items.append((filename, md_text, file_size))
+
+        except FileNotFoundError as e:
+            logger.warning("文件未找到 | path=%s", file_path)
+            items.append((os.path.basename(file_path), f"__ERROR__{e}", 0))
+
+        except UnicodeDecodeError:
+            logger.warning("文件编码错误 | path=%s", file_path)
+            items.append((os.path.basename(file_path), "__ERROR_UTF8__", 0))
+
+    return await _process_batch(items, preview_dir, preview_only)
+
+
+async def process_uploaded_files(
+    files: list[UploadFile],
+    preview_dir: Optional[str] = None,
+    preview_only: bool = False,
+) -> RAGProcessResponse:
+    """【上传模式】从 multipart form 解码 .md 文件并处理入库。
+
+    Args:
+        files: 上传的 UploadFile 列表。
+        preview_dir: 预览输出目录。
+        preview_only: True 时仅预览分块不写入向量库。
+    """
+    items: list[tuple[str, str, int]] = []
+
+    for file in files:
+        filename = file.filename or "unknown.md"
+        try:
+            content_bytes = await file.read()
+            file_size = len(content_bytes)
+            md_text = content_bytes.decode("utf-8")
+            items.append((filename, md_text, file_size))
+        except UnicodeDecodeError:
+            logger.warning("文件编码错误 | file=%s", filename)
+            items.append((filename, "__ERROR_UTF8__", 0))
+
+    return await _process_batch(items, preview_dir, preview_only)
+
+
+async def delete_documents(ids: list[str]) -> RAGDeleteResponse:
+    """从向量库中删除指定 ID 的文档。"""
+    try:
+        vectorstore = _get_vectorstore()
+    except AppException:
+        raise
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, vectorstore.delete, ids)
+        deleted_count = len(ids)
+
+        collection_count = vectorstore._collection.count()
+        logger.info("文档删除成功 | deleted=%d | remaining=%d", deleted_count, collection_count)
+
+        return RAGDeleteResponse(
+            deleted_count=deleted_count,
+            collection_count=collection_count,
+            message=f"已删除 {deleted_count} 个文档",
+        )
+
+    except Exception as e:
+        logger.exception("文档删除失败 | ids=%s", ids)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_DELETE_FAILED,
+            detail=f"删除文档失败: {e}",
+        )
+
+
+async def health_check() -> RAGHealthResponse:
+    """检查向量库健康状态。"""
+    try:
+        vectorstore = _get_vectorstore()
+    except AppException:
+        raise
+
+    try:
+        collection_count = vectorstore._collection.count()
+    except Exception as e:
+        logger.exception("向量库健康检查失败")
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_VECTORSTORE_ERROR,
+            detail=f"无法获取向量库状态: {e}",
+        )
+
+    return RAGHealthResponse(
+        collection_name=COLLECTION_NAME,
+        collection_count=collection_count,
+        persist_directory=CHROMA_DB,
+        embedding_model=EMBEDDING_MODEL,
+        embedding_base_url=EMBEDDING_BASE_URL,
+    )
+
+
+# ═══════════════════════════════════════════
+#  rag_config.yaml 配置管理
+# ═══════════════════════════════════════════
+
+# rag_config.yaml 位于 markdown_rag 包同级
+_RAG_CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+_RAG_CONFIG_PATH = os.path.normpath(
+    os.path.join(_RAG_CONFIG_DIR, "..", "..", "rag_pipeline", "markdown_rag", "rag_config.yaml")
+)
+
+
+async def get_rag_config() -> dict[str, Any]:
+    """读取 rag_config.yaml 并返回解析后的字典。
+
+    Returns:
+        完整的配置 dict，可直接反序列化为 RAGFullConfigModel。
+    """
+    try:
+        config_path = os.path.abspath(_RAG_CONFIG_PATH)
+        if not os.path.isfile(config_path):
+            raise FileNotFoundError(f"配置文件不存在: {config_path}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        logger.info("RAG 配置读取成功 | path=%s", config_path)
+        return config
+
+    except FileNotFoundError as e:
+        raise AppException(
+            status_code=404,
+            error_code=ErrorCode.RAG_FILE_NOT_FOUND,
+            detail=str(e),
+        )
+    except yaml.YAMLError as e:
+        logger.exception("RAG 配置 YAML 解析失败")
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_ERROR,
+            detail=f"配置文件 YAML 格式错误: {e}",
+        )
+    except AppException:
+        raise
+    except Exception as e:
+        logger.exception("RAG 配置读取异常")
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_ERROR,
+            detail=f"配置读取失败: {e}",
+        )
+
+
+async def update_rag_config(config: RAGFullConfigModel) -> dict[str, Any]:
+    """验证并写入 rag_config.yaml，写入后自动重载配置。
+
+    Args:
+        config: 经过 Pydantic 校验的完整配置模型。
+
+    Returns:
+        {"status": "ok", "message": "..."}
+    """
+    try:
+        config_path = os.path.abspath(_RAG_CONFIG_PATH)
+        config_dir = os.path.dirname(config_path)
+
+        # 确保目录存在
+        os.makedirs(config_dir, exist_ok=True)
+
+        # Pydantic model → dict（自动过滤默认值，保留用户显式设置的字段）
+        config_dict = config.model_dump(exclude_none=True)
+
+        # 写入 YAML（保持可读性）
+        yaml_content = yaml.dump(
+            config_dict,
+            allow_unicode=True,
+            default_flow_style=False,
+            sort_keys=False,
+        )
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write(yaml_content)
+
+        logger.info("RAG 配置文件写入成功 | path=%s | size=%d", config_path, len(yaml_content))
+
+        # 重载运行时配置变量
+        reload_rag_config()
+        logger.info("RAG 运行时配置已重载")
+
+        return {
+            "status": "ok",
+            "message": "RAG 配置已更新并生效",
+            "path": config_path,
+        }
+
+    except yaml.YAMLError as e:
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.VALIDATION_ERROR,
+            detail=f"配置序列化失败: {e}",
+        )
+    except AppException:
+        raise
+    except Exception as e:
+        logger.exception("RAG 配置写入异常")
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_ERROR,
+            detail=f"配置写入失败: {e}",
+        )
