@@ -1,4 +1,4 @@
-active_provider: ali
+active_provider: deepseek
 deepseek:
   model: deepseek-v4-flash
   base_url: https://api.deepseek.com
@@ -15,11 +15,11 @@ ollama:
   base_url: http://localhost:11434
   reasoning: low
 aliyun:
-  model: qwen3.6-flash-2026-04-16
+  model: qwen3.5-plus-2026-04-20
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   enable_thinking: true
 openai:
-  model: deepseek-v4-pro-202606
+  model: glm-5.2
   base_url: https://tokenhub.tencentmaas.com/v1
   extra_body:
     thinking:

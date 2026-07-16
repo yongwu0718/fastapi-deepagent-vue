@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 
 const DEFAULT_WIDTH = 480
+/** 最小拖拽距离（px），避免轻微触碰就改变宽度 */
+const DRAG_DEADZONE = 10
 
 export function useFilePanelResize(initialWidth?: number) {
   const panelWidth = ref(initialWidth ?? DEFAULT_WIDTH)
@@ -9,12 +11,14 @@ export function useFilePanelResize(initialWidth?: number) {
 
   let startX = 0
   let startWidth = 0
+  let hasMoved = false
 
   function onResizeStart(e: MouseEvent) {
     e.preventDefault()
     isResizing.value = true
     startX = e.clientX
     startWidth = panelWidth.value
+    hasMoved = false
     document.addEventListener('mousemove', onResizeMoveRight)
     document.addEventListener('mouseup', onResizeEnd)
     document.body.style.cursor = 'col-resize'
@@ -24,6 +28,8 @@ export function useFilePanelResize(initialWidth?: number) {
   function onResizeMoveRight(e: MouseEvent) {
     if (!isResizing.value) return
     const delta = e.clientX - startX
+    if (!hasMoved && Math.abs(delta) < DRAG_DEADZONE) return
+    hasMoved = true
     const next = startWidth + delta
     if (next >= 0) panelWidth.value = next
   }
@@ -33,6 +39,7 @@ export function useFilePanelResize(initialWidth?: number) {
     isResizing.value = true
     startX = e.clientX
     startWidth = panelWidth.value
+    hasMoved = false
     document.addEventListener('mousemove', onResizeMoveLeft)
     document.addEventListener('mouseup', onResizeEnd)
     document.body.style.cursor = 'col-resize'
@@ -42,6 +49,8 @@ export function useFilePanelResize(initialWidth?: number) {
   function onResizeMoveLeft(e: MouseEvent) {
     if (!isResizing.value) return
     const delta = e.clientX - startX
+    if (!hasMoved && Math.abs(delta) < DRAG_DEADZONE) return
+    hasMoved = true
     const next = startWidth - delta
     if (next >= 0) panelWidth.value = next
   }

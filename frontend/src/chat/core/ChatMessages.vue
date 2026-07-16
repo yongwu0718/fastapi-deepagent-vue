@@ -405,7 +405,7 @@ watch(
 
 <style scoped>
 .chat-messages {
-  max-width: 48rem;
+  max-width: var(--chat-max-width, 48rem);
   margin: 0 auto;
   padding: 32px 0 64px;
   display: flex;

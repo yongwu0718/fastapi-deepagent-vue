@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRef } from 'vue'
+import { ref, computed, toRef, onMounted, onUnmounted } from 'vue'
 import { useChatController } from './useChatController'
 import { useContentNav } from './useContentNav'
 import ChatHeader from './ChatHeader.vue'
@@ -65,10 +65,72 @@ const parsedInterrupt = computed<HITLRequest | null>(() => {
 
 // 大纲数据同步到模块级共享状态（供 RightSidebar 读取）
 useContentNav(ctrl.messages, ctrl.streamingContent)
+
+// ── 对话宽度自由拖拽缩放 ──
+const DEFAULT_MAX_WIDTH = '48rem'
+const MIN_WIDTH_REM = 24
+
+function getSavedWidth(): string {
+  try {
+    const saved = localStorage.getItem('chat_max_width')
+    if (saved) return saved
+  } catch { /* ignore */ }
+  return DEFAULT_MAX_WIDTH
+}
+
+function saveWidth(val: string) {
+  try {
+    localStorage.setItem('chat_max_width', val)
+  } catch { /* ignore */ }
+}
+
+const chatMaxWidth = ref(getSavedWidth())
+const isDragging = ref(false)
+const resizeHandleRef = ref<HTMLElement | null>(null)
+const chatViewRef = ref<HTMLElement | null>(null)
+
+function onDrag(e: MouseEvent) {
+  if (!isDragging.value) return
+  const container = chatViewRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  const newWidthPx = e.clientX - rect.left
+  const newWidthRem = newWidthPx / 16
+  const maxWidthRem = rect.width / 16
+  const clamped = Math.max(MIN_WIDTH_REM, Math.min(newWidthRem, maxWidthRem))
+  chatMaxWidth.value = `${Math.round(clamped)}rem`
+}
+
+function startDrag(e: MouseEvent) {
+  e.preventDefault()
+  isDragging.value = true
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+function stopDrag() {
+  if (!isDragging.value) return
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  saveWidth(chatMaxWidth.value)
+}
+
+onUnmounted(() => {
+  // 清理可能残留的事件监听
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+})
 </script>
 
 <template>
-  <div class="chat-view">
+  <div ref="chatViewRef" class="chat-view" :style="{ '--chat-max-width': chatMaxWidth }">
     <ChatHeader
       :has-messages="ctrl.hasMessages.value"
       :loading="ctrl.loading.value"
@@ -161,6 +223,16 @@ useContentNav(ctrl.messages, ctrl.streamingContent)
         @respond="(response: HITLResponse) => onResume(response.decisions)"
         @cancel="onCancelInterrupt"
       />
+
+      <!-- 拖拽缩放手柄（有消息时显示） -->
+      <div
+        v-if="ctrl.hasMessages.value || ctrl.loading.value"
+        ref="resizeHandleRef"
+        class="chat-resize-handle"
+        :class="{ 'chat-resize-handle--active': isDragging }"
+      >
+        <div class="chat-resize-grip" @mousedown="startDrag" />
+      </div>
 
     </div>
   </div>
@@ -296,5 +368,41 @@ useContentNav(ctrl.messages, ctrl.streamingContent)
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── 拖拽缩放手柄 ── */
+.chat-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* 不拦截滚动条点击 */
+}
+
+.chat-resize-grip {
+  width: 6px;
+  height: 56px;
+  border-radius: 3px;
+  background: var(--border, #e5e4e7);
+  transition: background 0.15s, height 0.15s, opacity 0.2s;
+  opacity: 0;
+  cursor: col-resize;
+  pointer-events: auto; /* 仅 grip 响应拖拽 */
+}
+
+.chat-content:hover .chat-resize-grip,
+.chat-resize-handle--active .chat-resize-grip {
+  opacity: 1;
+}
+
+.chat-resize-grip:hover,
+.chat-resize-handle--active .chat-resize-grip {
+  background: var(--accent, #aa3bff);
+  height: 72px;
 }
 </style>

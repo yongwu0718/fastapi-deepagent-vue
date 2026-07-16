@@ -197,6 +197,11 @@ function goRag() {
 
 .chat-header--full {
   justify-content: space-between;
+  max-width: var(--chat-max-width, 100%);
+  margin: 0 auto;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .header-left {

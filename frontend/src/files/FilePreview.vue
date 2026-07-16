@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, toRef, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, toRef } from 'vue'
 import type { FileEntry } from '@/api/files'
 import { useMarkdownRenderer } from './useMarkdownRenderer'
 import { getFileManager } from './useFileManager'
@@ -35,13 +35,6 @@ watch(
   () => props.entry.path,
   () => { isEditing.value = false },
 )
-
-// 组件卸载时释放 blob URL
-onBeforeUnmount(() => {
-  if (props.fileUrl && props.fileUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(props.fileUrl)
-  }
-})
 
 function handleSave() {
   emit('save', editedContent.value)
@@ -82,7 +75,67 @@ const isMarkdown = computed(() =>
 
 // Markdown 渲染
 const contentRef = toRef(props, 'content')
-const { renderedHtml } = useMarkdownRenderer(contentRef, isMarkdown)
+const { renderedHtml, outline } = useMarkdownRenderer(contentRef, isMarkdown)
+
+// ── Mermaid 缩放 & 平移 ──
+const mermaidZoom = ref(140)
+const isPanMode = ref(false)
+const isDragging = ref(false)
+const panOffset = ref({ x: 0, y: 0 })
+const dragStart = ref({ x: 0, y: 0 })
+const panStart = ref({ x: 0, y: 0 })
+
+const mermaidStyle = computed(() => ({
+  '--mermaid-scale': String(mermaidZoom.value / 100),
+  '--mermaid-tx': `${panOffset.value.x}px`,
+  '--mermaid-ty': `${panOffset.value.y}px`,
+}))
+
+const hasMermaid = computed(() => renderedHtml.value.includes('mermaid-container'))
+
+function zoomIn() { mermaidZoom.value = Math.min(300, mermaidZoom.value + 10) }
+function zoomOut() { mermaidZoom.value = Math.max(30, mermaidZoom.value - 10) }
+function onZoomInput(e: Event) { mermaidZoom.value = Number((e.target as HTMLInputElement).value) }
+function resetZoom() {
+  mermaidZoom.value = 140
+  panOffset.value = { x: 0, y: 0 }
+}
+function togglePanMode() {
+  isPanMode.value = !isPanMode.value
+  if (!isPanMode.value) { panOffset.value = { x: 0, y: 0 }; isDragging.value = false }
+}
+
+function onMermaidMouseDown(e: MouseEvent) {
+  if (!isPanMode.value) return
+  const target = e.target as HTMLElement
+  if (!target.closest('.mermaid-container')) return
+  isDragging.value = true
+  dragStart.value = { x: e.clientX, y: e.clientY }
+  panStart.value = { ...panOffset.value }
+  e.preventDefault()
+}
+function onMermaidMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return
+  panOffset.value = {
+    x: panStart.value.x + (e.clientX - dragStart.value.x),
+    y: panStart.value.y + (e.clientY - dragStart.value.y),
+  }
+}
+function onMermaidMouseUp() { isDragging.value = false }
+
+// 切换文件时重置
+watch(() => props.entry.path, () => {
+  mermaidZoom.value = 140
+  panOffset.value = { x: 0, y: 0 }
+  isPanMode.value = false
+  isDragging.value = false
+})
+
+// ── 大纲面板（由 FileBrowser 通过 previewRef 控制） ──
+const showOutline = ref(false)
+
+// 切换文件时关闭大纲
+watch(() => props.entry.path, () => { showOutline.value = false })
 
 // 内容类型判断
 const isPdf = computed(() => props.contentType === 'pdf')
@@ -101,15 +154,44 @@ function handleDownload() {
   document.body.removeChild(a)
 }
 
-// ── 内部 .md 链接跳转（点击后在文件浏览器中打开） ──
+// ── 内部 .md 链接跳转 + 代码块/mermaid 复制（事件委托） ──
 function onMarkdownClick(e: MouseEvent) {
+  // mermaid 源码复制
+  const mermaidBtn = (e.target as HTMLElement).closest('.mermaid-copy-btn')
+  if (mermaidBtn) {
+    const source = mermaidBtn.parentElement?.querySelector('.mermaid-source')?.textContent
+    if (source) {
+      navigator.clipboard.writeText(source).then(() => {
+        mermaidBtn.textContent = '已复制'
+        mermaidBtn.classList.add('copied')
+        setTimeout(() => { mermaidBtn.textContent = '源码'; mermaidBtn.classList.remove('copied') }, 2000)
+      }).catch(() => {})
+    }
+    return
+  }
+  // 代码块复制按钮
+  const copyBtn = (e.target as HTMLElement).closest('.code-copy-btn')
+  if (copyBtn) {
+    const wrapper = copyBtn.closest('.code-block-wrapper')
+    const code = wrapper?.querySelector('code')?.textContent
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => {
+        copyBtn.textContent = '已复制'
+        copyBtn.classList.add('copied')
+        setTimeout(() => {
+          copyBtn.textContent = '复制'
+          copyBtn.classList.remove('copied')
+        }, 2000)
+      }).catch(() => {})
+    }
+    return
+  }
+  // .md 链接跳转
   const anchor = (e.target as HTMLElement).closest('a')
   if (!anchor) return
   const href = anchor.getAttribute('href')
-  // 只处理相对路径的 .md 链接，外部 URL 交给 target="_blank"
   if (!href || /^(https?:)?\/\//.test(href) || !href.endsWith('.md')) return
   e.preventDefault()
-  // 基于当前文件目录解析相对路径
   const currentDir = props.entry.path.includes('/')
     ? props.entry.path.substring(0, props.entry.path.lastIndexOf('/'))
     : ''
@@ -140,6 +222,8 @@ defineExpose({
   handleDownload,
   copied,
   toggleEdit,
+  outline,
+  showOutline,
 })
 </script>
 
@@ -151,7 +235,7 @@ defineExpose({
     </div>
 
     <!-- 内容区：Markdown 文件（可编辑，默认预览） -->
-    <div class="fp-body" v-else-if="isMarkdown && isTextEditable() && isText">
+    <div class="fp-body fp-body--md" v-else-if="isMarkdown && isTextEditable() && isText">
       <textarea
         v-if="isEditing"
         v-model="editedContent"
@@ -159,7 +243,18 @@ defineExpose({
         spellcheck="false"
         placeholder="文件内容..."
       />
-      <div v-else class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+      <div
+        v-else
+        class="fp-md-wrapper"
+        :class="{ 'pan-mode': isPanMode, 'is-dragging': isDragging }"
+        :style="mermaidStyle"
+        @mousedown="onMermaidMouseDown"
+        @mousemove="onMermaidMouseMove"
+        @mouseup="onMermaidMouseUp"
+        @mouseleave="onMermaidMouseUp"
+      >
+        <div class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+      </div>
     </div>
 
     <!-- 内容区：文本编辑 -->
@@ -173,8 +268,18 @@ defineExpose({
     </div>
 
     <!-- 内容区：Markdown 渲染（只读） -->
-    <div class="fp-body" v-else-if="isText && isMarkdown">
-      <div class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+    <div class="fp-body fp-body--md" v-else-if="isText && isMarkdown">
+      <div
+        class="fp-md-wrapper"
+        :class="{ 'pan-mode': isPanMode, 'is-dragging': isDragging }"
+        :style="mermaidStyle"
+        @mousedown="onMermaidMouseDown"
+        @mousemove="onMermaidMouseMove"
+        @mouseup="onMermaidMouseUp"
+        @mouseleave="onMermaidMouseUp"
+      >
+        <div class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+      </div>
     </div>
 
 
@@ -225,6 +330,36 @@ defineExpose({
       <div class="fp-binary-hint">
         <p class="fp-binary-desc">文件内容为空或不支持预览</p>
       </div>
+    </div>
+
+    <!-- Mermaid 工具栏 -->
+    <div v-if="hasMermaid" class="fp-mermaid-toolbar">
+      <button class="fp-mt-btn" @click="zoomOut" title="缩小">−</button>
+      <input
+        type="range"
+        class="fp-mt-slider"
+        :min="30"
+        :max="300"
+        :value="mermaidZoom"
+        @input="onZoomInput"
+        title="缩放"
+      />
+      <button class="fp-mt-btn" @click="zoomIn" title="放大">+</button>
+      <span class="fp-mt-pct" @click="resetZoom" title="点击重置">{{ mermaidZoom }}%</span>
+      <button
+        class="fp-mt-btn fp-mt-pan"
+        :class="{ active: isPanMode }"
+        @click="togglePanMode"
+        :title="isPanMode ? '退出拖拽' : '拖拽平移'"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 11V7a2 2 0 0 0-4 0v3"/>
+          <path d="M14 10V5a2 2 0 0 0-4 0v5"/>
+          <path d="M10 10V3a2 2 0 0 0-4 0v10"/>
+          <path d="M6 13v5a3 3 0 0 0 6 0v-4"/>
+          <path d="M12 14h5a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-3"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -356,6 +491,69 @@ defineExpose({
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Mermaid 工具栏 ── */
+.fp-mermaid-toolbar {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  user-select: none;
+}
+.fp-mt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text, #6b6375);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.fp-mt-btn:hover {
+  background: var(--bg-hover, #f5f3f7);
+  color: var(--text-h, #08060d);
+}
+.fp-mt-pan.active {
+  background: var(--accent, #aa3bff);
+  color: #fff;
+  border-color: var(--accent, #aa3bff);
+}
+.fp-mt-slider {
+  width: 64px;
+  height: 4px;
+  accent-color: var(--accent, #aa3bff);
+  cursor: pointer;
+}
+.fp-mt-pct {
+  font-size: 11px;
+  color: var(--text-m, #9b8eaa);
+  min-width: 36px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.fp-mt-pct:hover { color: var(--text-h, #08060d); }
+
+/* ── Markdown 预览包裹层 ── */
+.fp-md-wrapper {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
 </style>
 
 <!-- Markdown 预览全局样式（v-html 不继承 scoped） -->
@@ -377,9 +575,9 @@ defineExpose({
 .fp-markdown h3 { font-size: 1.1em; }
 .fp-markdown h4 { font-size: 1.05em; }
 .fp-markdown pre {
-  margin: 10px 0; padding: 12px 14px; border-radius: 8px; background: #1e1e2e; overflow-x: auto; font-size: 13px; line-height: 1.5;
+  margin: 10px 0; padding: 12px 14px; border-radius: 8px; background: var(--code-bg, #f4f3ec); overflow-x: auto; font-size: 13px; line-height: 1.5;
 }
-.fp-markdown pre code { background: none; padding: 0; color: #cdd6f4; font-family: var(--mono, ui-monospace, Consolas, monospace); }
+.fp-markdown pre code { background: none; padding: 0; color: var(--text-h, #08060d); font-family: var(--mono, ui-monospace, Consolas, monospace); }
 .fp-markdown code {
   padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: var(--mono, ui-monospace, Consolas, monospace);
   background: var(--code-bg, #f4f3ec); color: var(--text-h, #08060d);
@@ -399,4 +597,105 @@ defineExpose({
 .fp-markdown del { opacity: 0.6; }
 .fp-markdown strong { color: var(--text-h, #08060d); }
 .fp-markdown input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent, #aa3bff); }
+
+/* ── Mermaid 图表 ── */
+.fp-markdown .mermaid-container {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+  overflow: visible;
+}
+.fp-markdown .mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+  transform: translate(var(--mermaid-tx, 0px), var(--mermaid-ty, 0px)) scale(var(--mermaid-scale, 1.4));
+  transform-origin: top center;
+  transition: transform 0.08s ease-out;
+}
+/* 平移模式光标 */
+.fp-md-wrapper.pan-mode .mermaid-container svg {
+  cursor: grab;
+}
+.fp-md-wrapper.pan-mode.is-dragging .mermaid-container svg {
+  cursor: grabbing;
+}
+.fp-markdown .mermaid-error {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff0f0;
+  border: 1px solid #fcc;
+  color: #c33;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── 代码块复制 ── */
+.fp-markdown .code-block-wrapper {
+  position: relative;
+  margin: 10px 0;
+}
+.fp-markdown .code-block-wrapper pre {
+  margin: 0;
+}
+.fp-markdown .code-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text-m, #9b8eaa);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s;
+}
+.fp-markdown .code-block-wrapper:hover .code-copy-btn {
+  opacity: 1;
+}
+.fp-markdown .code-copy-btn:hover {
+  background: var(--code-bg, #f4f3ec);
+  color: var(--text-h, #08060d);
+  border-color: var(--accent, #aa3bff);
+}
+.fp-markdown .code-copy-btn.copied {
+  opacity: 1;
+  color: #16a34a;
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}
+
+/* ── Mermaid 源码复制 ── */
+.fp-markdown .mermaid-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 10px;
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text-m, #9b8eaa);
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 1;
+  opacity: 0;
+  transition: all 0.15s;
+}
+.fp-markdown .mermaid-container:hover .mermaid-copy-btn {
+  opacity: 1;
+}
+.fp-markdown .mermaid-copy-btn:hover {
+  background: var(--code-bg, #f4f3ec);
+  color: var(--text-h, #08060d);
+  border-color: var(--accent, #aa3bff);
+}
+.fp-markdown .mermaid-copy-btn.copied {
+  opacity: 1;
+  color: #16a34a;
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}
 </style>

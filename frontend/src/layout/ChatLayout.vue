@@ -114,8 +114,8 @@ function handleUpdateTitle(threadId: string, title: string) {
         />
       </div>
       <!-- 拖拽手柄 -->
-      <div class="sidebar-resize-handle" @mousedown="onSidebarResize">
-        <div class="resize-handle-line" />
+      <div class="sidebar-resize-handle">
+        <div class="resize-handle-line" @mousedown="onSidebarResize" />
       </div>
     </div>
 
@@ -127,15 +127,15 @@ function handleUpdateTitle(threadId: string, title: string) {
       :style="filePanelOpen ? { width: filePanelWidth + 'px' } : {}"
     >
       <!-- 左侧拖拽手柄 -->
-      <div class="file-panel-resize-handle file-panel-resize-handle--left" @mousedown="onFilePanelResizeLeft">
-        <div class="resize-handle-line" />
+      <div class="file-panel-resize-handle file-panel-resize-handle--left">
+        <div class="resize-handle-line" @mousedown="onFilePanelResizeLeft" />
       </div>
       <div class="file-panel-inner" :style="{ width: filePanelWidth + 'px' }">
         <FileBrowser />
       </div>
       <!-- 右侧拖拽手柄 -->
-      <div class="file-panel-resize-handle file-panel-resize-handle--right" @mousedown="onFilePanelResize">
-        <div class="resize-handle-line" />
+      <div class="file-panel-resize-handle file-panel-resize-handle--right">
+        <div class="resize-handle-line" @mousedown="onFilePanelResize" />
       </div>
     </div>
 
@@ -203,6 +203,7 @@ function handleUpdateTitle(threadId: string, title: string) {
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .sidebar-resize-handle .resize-handle-line {
@@ -210,10 +211,15 @@ function handleUpdateTitle(threadId: string, title: string) {
   height: 40px;
   border-radius: 2px;
   background: transparent;
+  pointer-events: auto;
+  /* 扩展点击区域 */
+  padding: 0 6px;
+  margin: 0 -6px;
+  background-clip: content-box;
   transition: background 0.15s;
 }
 
-.sidebar-resize-handle:hover .resize-handle-line,
+.sidebar-resize-handle .resize-handle-line:hover,
 .sidebar-wrapper.resizing .sidebar-resize-handle .resize-handle-line {
   background: var(--accent, #aa3bff);
   opacity: 0.5;
@@ -247,6 +253,7 @@ function handleUpdateTitle(threadId: string, title: string) {
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .file-panel-resize-handle--right {
@@ -262,10 +269,15 @@ function handleUpdateTitle(threadId: string, title: string) {
   height: 40px;
   border-radius: 2px;
   background: transparent;
+  pointer-events: auto;
+  /* 扩展点击区域 */
+  padding: 0 6px;
+  margin: 0 -6px;
+  background-clip: content-box;
   transition: background 0.15s;
 }
 
-.file-panel-resize-handle:hover .resize-handle-line,
+.file-panel-resize-handle .resize-handle-line:hover,
 .file-panel-wrapper.resizing .file-panel-resize-handle .resize-handle-line {
   background: var(--accent, #aa3bff);
   opacity: 0.5;

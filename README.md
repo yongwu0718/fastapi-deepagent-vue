@@ -2,6 +2,21 @@
 
 基于 **DeepAgents + LangGraph** 的深度智能体知识库检索系统，集成两阶段 RAG 检索、长期记忆、技能管理、人机交互审批（HITL）、Loop Engineering 条件驱动循环、检查点分支导航等能力，配备 Vue 3 流式对话前端。
 
+**注意：**
+mcp服务网站:
+魔搭平台:https://modelscope.cn/mcp
+阿里云百炼平台:https://bailian.console.aliyun.com/cn-beijing?tab=app#/mcp-market
+火山引擎平台:https://www.volcengine.com/ats
+skillhub平台网站:
+魔搭平台:https://modelscope.cn/skills
+skillhub平台:https://skillhub.cloud.tencent.com/skills?sortBy=score
+openclaw平台:https://clawhub.ai/skills
+hermes平台:https://hermes-agent.nousresearch.com/docs/skills
+
+自带mcp服务:
+使用百炼的mcp服务进行web搜索,
+集成了飞书的mcp服务,通过自然语言调用飞书的api接口.
+
 ---
 
 ## 核心能力一览

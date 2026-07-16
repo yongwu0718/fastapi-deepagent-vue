@@ -1,8 +1,70 @@
-import { computed, type Ref } from 'vue'
+import { ref, watch, computed, type Ref } from 'vue'
 import MarkdownIt from 'markdown-it'
 import multimdTable from 'markdown-it-multimd-table'
 import markdownItKatex from 'markdown-it-katex'
 import DOMPurify from 'dompurify'
+import mermaid from 'mermaid'
+
+// ── Mermaid 初始化 ──
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  flowchart: {
+    curve: 'step',
+    rankSpacing: 100,
+    nodeSpacing: 90,
+    useMaxWidth: false,
+  },
+})
+
+/** 大纲条目 */
+export interface OutlineItem {
+  level: number
+  text: string
+  id: string
+}
+
+// ── 工具函数 ──
+
+/** 将标题文本转为 URL 安全的 slug */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'heading'
+}
+
+/** 收集已用 slugs 并去重（追加 -1, -2...） */
+function createUniqueSlug() {
+  const used = new Map<string, number>()
+  return (text: string): string => {
+    const base = slugify(text)
+    const count = used.get(base)
+    if (count === undefined) {
+      used.set(base, 1)
+      return base
+    }
+    used.set(base, count + 1)
+    return `${base}-${count}`
+  }
+}
+
+/** 从原始 markdown 中提取标题大纲 */
+function extractOutline(mdContent: string): OutlineItem[] {
+  const getSlug = createUniqueSlug()
+  const headingRe = /^(#{1,6})\s+(.+)$/gm
+  const items: OutlineItem[] = []
+  let match: RegExpExecArray | null
+  while ((match = headingRe.exec(mdContent)) !== null) {
+    const level = match[1].length
+    const text = match[2].trim()
+    const id = getSlug(text)
+    items.push({ level, text, id })
+  }
+  return items
+}
 
 // ── markdown-it 单例 ──
 const md = new MarkdownIt({
@@ -17,7 +79,7 @@ md.use(multimdTable, {
 })
 md.use(markdownItKatex, { throwOnError: false, errorColor: '#cc0000', output: 'html' })
 
-// ── 给所有链接添加 target="_blank" 实现新标签页跳转 ──
+// ── 给所有链接添加 target="_blank" ──
 const defaultLinkRender = md.renderer.rules.link_open ?? function (tokens, idx, options, _env, self) {
   return self.renderToken(tokens, idx, options)
 }
@@ -26,6 +88,27 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
   token.attrSet('target', '_blank')
   token.attrSet('rel', 'noopener noreferrer')
   return defaultLinkRender(tokens, idx, options, env, self)
+}
+
+// ── 给标题注入 id 属性 ──
+const defaultHeadingOpen = md.renderer.rules.heading_open ?? function (tokens, idx, options, _env, self) {
+  return self.renderToken(tokens, idx, options)
+}
+md.renderer.rules.heading_open = function (tokens, idx, options, env, self) {
+  const hToken = tokens[idx]
+  // 下一个 token 是 inline（包含标题文本）
+  const inlineToken = tokens[idx + 1]
+  if (inlineToken && inlineToken.type === 'inline' && inlineToken.content) {
+    const slugGen = (env as Record<string, unknown>)._headingSlugGen as ((t: string) => string) | undefined
+    const getSlug = slugGen ?? createUniqueSlug()
+    const id = getSlug(inlineToken.content)
+    // 确保 env 中有 slug gen 供同一文档共享
+    if (!slugGen && env) {
+      ;(env as Record<string, unknown>)._headingSlugGen = getSlug
+    }
+    hToken.attrSet('id', id)
+  }
+  return defaultHeadingOpen(tokens, idx, options, env, self)
 }
 
 // ── 预处理函数 ──
@@ -88,23 +171,98 @@ function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (c) => map[c] || c)
 }
 
+/** HTML 实体解码（还原 markdown-it 对代码块内容的转义） */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#x27;/g, "'")
+}
+
+// ── Mermaid 渲染辅助 ──
+
+let mermaidIdCounter = 0
+
+/** 匹配 <pre><code class="language-mermaid">...</code></pre> */
+const MERMAID_BLOCK_RE = /<pre[^>]*><code[^>]*class="[^"]*language-mermaid[^"]*"[^>]*>([\s\S]*?)<\/code><\/pre>/gi
+
+/** 从 HTML 中提取 mermaid 代码块，替换为占位 div */
+function extractMermaidBlocks(html: string): { html: string; blocks: Array<{ id: string; code: string }> } {
+  const blocks: Array<{ id: string; code: string }> = []
+  const result = html.replace(MERMAID_BLOCK_RE, (_, code: string) => {
+    const id = `mermaid-${++mermaidIdCounter}`
+    blocks.push({ id, code: decodeHtmlEntities(code.trim()) })
+    return `<div class="mermaid-container" data-mermaid-id="${id}"></div>`
+  })
+  return { html: result, blocks }
+}
+
+/** 给代码块包裹 .code-block-wrapper + 复制按钮 */
+function addCodeCopyButtons(html: string): string {
+  return html.replace(
+    /<pre([^>]*)>([\s\S]*?)<\/pre>/g,
+    (match, attrs, content) => {
+      if (/class="[^"]*mermaid/.test(attrs) || /mermaid-container/.test(match)) return match
+      return `<div class="code-block-wrapper"><pre${attrs}>${content}</pre><button class="code-copy-btn" title="复制代码">复制</button></div>`
+    },
+  )
+}
+
 // ── composable ──
 
 export function useMarkdownRenderer(content: Ref<string>, isMarkdown: Ref<boolean>) {
-  const renderedHtml = computed(() => {
+  const renderedHtml = ref('')
+
+  async function renderContent() {
     if (!isMarkdown.value || !content.value) {
-      return ''
+      renderedHtml.value = ''
+      return
     }
     try {
       const noExtraBlanks = preprocessTableContinuity(content.value)
       const preprocessed = preprocessBoxDrawing(noExtraBlanks)
-      const rawHtml = md.render(preprocessed)
-      return DOMPurify.sanitize(rawHtml)
+      const env = {}
+      const rawHtml = md.render(preprocessed, env)
+      const { html: placeholderHtml, blocks } = extractMermaidBlocks(rawHtml)
+      const sanitized = DOMPurify.sanitize(placeholderHtml)
+
+      if (blocks.length > 0) {
+        let finalHtml = sanitized
+        for (const block of blocks) {
+          try {
+            const { svg } = await mermaid.render(block.id, block.code)
+            finalHtml = finalHtml.replace(
+              `<div class="mermaid-container" data-mermaid-id="${block.id}"></div>`,
+              `<div class="mermaid-container"><button class="mermaid-copy-btn" title="复制源码">源码</button>${svg}<pre style="display:none" class="mermaid-source">${escapeHtml(block.code)}</pre></div>`,
+            )
+          } catch (err) {
+            console.error(`[Mermaid] 渲染失败 (${block.id})`, err)
+            finalHtml = finalHtml.replace(
+              `<div class="mermaid-container" data-mermaid-id="${block.id}"></div>`,
+              `<pre class="mermaid-error">Mermaid 渲染错误: ${escapeHtml((err as Error).message)}\n${escapeHtml(block.code.slice(0, 300))}</pre>`,
+            )
+          }
+        }
+        renderedHtml.value = addCodeCopyButtons(finalHtml)
+      } else {
+        renderedHtml.value = addCodeCopyButtons(sanitized)
+      }
     } catch (err) {
       console.error('[MarkdownRenderer] 渲染失败', err)
-      return `<pre style="color:red;padding:12px;">渲染错误: ${(err as Error).message}\n\n原始内容:\n${escapeHtml(content.value.slice(0, 500))}</pre>`
+      renderedHtml.value = `<pre style="color:red;padding:12px;">渲染错误: ${(err as Error).message}\n\n原始内容:\n${escapeHtml(content.value.slice(0, 500))}</pre>`
     }
+  }
+
+  watch([content, isMarkdown], () => { renderContent() }, { immediate: true })
+
+  /** 大纲（标题层级） */
+  const outline = computed<OutlineItem[]>(() => {
+    if (!isMarkdown.value || !content.value) return []
+    return extractOutline(content.value)
   })
 
-  return { renderedHtml }
+  return { renderedHtml, outline }
 }

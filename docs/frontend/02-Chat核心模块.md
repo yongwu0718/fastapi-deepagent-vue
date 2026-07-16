@@ -40,6 +40,7 @@ ChatView.vue (顶层视图)
   ├── ChatMessages.vue            (消息列表)
   │     └── ChatReason.vue        (推理折叠卡片)
   ├── ChatInput.vue               (输入框 + Loop rubric 面板)
+  ├── .chat-resize-handle         (拖拽缩放手柄，hover 显示)
   └── ApprovalCard.vue            (覆盖层，interrupt 时展示)
 ```
 
@@ -369,17 +370,32 @@ done 事件
 <ChatMessages ... />
 <ChatInput ... />
 <ApprovalCard v-if="showInterrupt" ... />
+<div class="chat-resize-handle" />  <!-- 拖拽缩放手柄，仅消息区可见 -->
 ```
 
 **computed**：
 - `parsedInterrupt`：将 `interruptData` 解析为 `HITLRequest`
 - `contentNav`：消息大纲（共享到 RightSidebar）
 
+**对话宽度自由缩放**：
+
+ChatView 通过注入 CSS 变量 `--chat-max-width` 控制消息列表和输入框的最大宽度，并在右侧边缘提供拖拽手柄：
+
+| 状态/字段 | 说明 |
+|-----------|------|
+| `chatMaxWidth` (ref) | 当前宽度值（如 `"48rem"`），从 localStorage 恢复 |
+| `isDragging` (ref) | 是否正在拖拽中 |
+| `startDrag()` | mousedown 时注册全局 mousemove/mouseup 监听 |
+| `onDrag()` | 按鼠标距 `.chat-view` 左边缘距离计算新宽度（范围 24rem ~ 容器宽度） |
+| `stopDrag()` | 移除全局监听，将宽度写入 `localStorage`（key: `chat_max_width`） |
+
+拖拽手柄默认透明隐藏，hover `.chat-content` 时显示紫色竖条，拖拽中高亮放大。`ChatMessages.vue`、`ChatInput.vue` 的 `.chat-messages` / `.chat-input` 通过 `max-width: var(--chat-max-width, 48rem)` 响应宽度变化，`ChatHeader.vue` 聊天中状态同步跟随。
+
 ### ChatHeader.vue
 
 双模式：
 - **空白状态**：仅工具栏按钮（侧边栏切换、文件面板切换、设置）
-- **聊天中**：完整导航栏 + AgentLogo + 新建对话按钮
+- **聊天中**：完整导航栏 + AgentLogo + 新建对话按钮，宽度通过 `var(--chat-max-width, 100%)` 与消息区对齐
 
 ### ChatInput.vue
 
@@ -388,6 +404,7 @@ done 事件
 - **Loop 模式**：点击左下角"Loop"按钮展开 rubric 条件输入框
 - 拖入文件路径支持
 - 发送和取消按钮
+- 宽度通过 `var(--chat-max-width, 48rem)` 与消息列表同步，随拖拽缩放联动
 
 ### ChatReason.vue
 
@@ -404,6 +421,69 @@ done 事件
 - 分支切换器（多分支导航）
 - Fork 内联编辑器
 - 空状态欢迎页
+- 宽度通过 `var(--chat-max-width, 48rem)` 居中，随拖拽缩放联动
+- assistant 消息通过共享组件 `<Markdown>` 渲染（支持 Mermaid 图表、代码块复制）
+
+---
+
+## 共享组件：Markdown.vue
+
+位于 `frontend/src/shared/Markdown.vue`，FilePreview 和 ChatMessages 共用。
+
+### 依赖
+
+| 库 | 说明 |
+|----|------|
+| `marked` | Markdown → HTML 解析 |
+| `DOMPurify` | XSS 安全过滤 |
+| `mermaid` | 图表渲染（flowchart、sequence 等） |
+
+### Mermaid 配置
+
+```typescript
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  flowchart: {
+    curve: 'step',          // 直角正交连线
+    rankSpacing: 100,       // 层级间距
+    nodeSpacing: 90,        // 节点间距
+    useMaxWidth: false,     // 不限制宽度
+  },
+})
+```
+
+### 渲染流程
+
+```
+slots.default → 提取文本
+  → marked.parse()
+  → extractMermaidBlocks()    // 提取 ```mermaid → 占位 div
+  → DOMPurify.sanitize()
+  → mermaid.render() 异步      // 逐个渲染为 SVG
+  → addCodeCopyButtons()      // <pre> 包裹 .code-block-wrapper + 复制按钮
+  → html.value
+```
+
+- 使用 `ref` + `watch` 异步模式适配 mermaid.render() 的 Promise
+- `decodeHtmlEntities()` 解码 marked 的 HTML 转义
+
+### 代码块复制
+
+hover 代码块右上角「复制」按钮 → `navigator.clipboard.writeText()` → 绿色「已复制」2 秒恢复。
+
+### Mermaid 图表
+
+- 渲染为 SVG，hover 右上角「源码」按钮复制原始 mermaid 代码
+- 对话系统中无缩放/平移工具栏（仅文件预览有）
+- 渲染失败显示红色错误提示
+
+### Props
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `codeBlockIdSeed` | `string?` | 代码块锚点 ID 前缀，用于右侧栏内容导航 |
 
 ---
 

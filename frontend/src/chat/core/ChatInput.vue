@@ -229,7 +229,7 @@ function onPathDrop(e: DragEvent) {
 <style scoped>
 .chat-input {
   padding: 0 16px 16px;
-  max-width: 48rem;
+  max-width: var(--chat-max-width, 48rem);
   margin: 0 auto;
   width: 100%;
 }

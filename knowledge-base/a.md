@@ -59,4 +59,12 @@ flowchart TB
     J --> J1["力学性能<br/>异种接头强度 ≈ 同种的 52%~62%<br/>异种硬度高 22%~36%"]
     J --> J2["腐蚀行为<br/>Eₚᵢₜ = –259.32 mV (异种)<br/>–236.19 mV (Mg同种)<br/>–214.36 mV (Cu同种)"]
     J --> J3["腐蚀机制<br/>异种材料不均匀分布<br/>→ 腐蚀坑密度更高<br/>晶粒结构差异 → 微裂纹更突出"]
+
+    style A fill:#e1f5fe,stroke:#0288d1
+    style E fill:#fff3e0,stroke:#f57c00
+    style F fill:#e8f5e9,stroke:#388e3c
+    style G fill:#fce4ec,stroke:#c62828
+    style H fill:#f3e5f5,stroke:#7b1fa2
+    style I fill:#fff8e1,stroke:#f9a825
+    style J fill:#e0f2f1,stroke:#00695c
 ```

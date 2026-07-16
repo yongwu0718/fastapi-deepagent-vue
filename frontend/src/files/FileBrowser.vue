@@ -6,6 +6,9 @@ import FileCreateDialog from './FileCreateDialog.vue'
 import FileRenameDialog from './FileRenameDialog.vue'
 import FileDeleteDialog from './FileDeleteDialog.vue'
 import FilePreview from './FilePreview.vue'
+import FileList from './FileList.vue'
+import FileTabs from './FileTabs.vue'
+import SplitFileView from './SplitFileView.vue'
 
 const fm = getFileManager()
 
@@ -23,9 +26,20 @@ const deleteTarget = ref<FileEntry | null>(null)
 const uploadInput = ref<HTMLInputElement | null>(null)
 
 // ── FilePreview 引用 ──
-const previewRef = ref<InstanceType<typeof FilePreview> | null>(null)
+const singlePreviewRef = ref<InstanceType<typeof FilePreview> | null>(null)
+const splitViewRef = ref<InstanceType<typeof SplitFileView> | null>(null)
 
-// ── 预览模式本地计算（不依赖 previewRef，避免 template ref 时序问题） ──
+/** 当前活跃窗格的 FilePreview 引用 */
+const previewRef = computed(() => {
+  if (fm.splitMode.value && splitViewRef.value) {
+    return fm.activePane.value === 'left'
+      ? splitViewRef.value.leftPreviewRef
+      : splitViewRef.value.rightPreviewRef
+  }
+  return singlePreviewRef.value
+})
+
+// ── 预览模式本地计算 ──
 const isMarkdown = computed(() =>
   fm.selectedEntry.value?.name.toLowerCase().endsWith('.md') ?? false,
 )
@@ -56,14 +70,20 @@ const isImage = computed(() => fm.fileContentType.value === 'image')
 // Markdown 编辑模式（与 FilePreview 内部 isEditing 同步）
 const isEditing = ref(false)
 
-// 切换文件时重置编辑模式
 watch(
   () => fm.selectedEntry.value?.path,
   () => { isEditing.value = false },
 )
 
-// ── 操作 ──
+// ── 大纲 ──
+function scrollToHeading(id: string) {
+  const el = document.getElementById(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
+// ── 操作 ──
 function goTo(path: string) {
   fm.navigateTo(path)
 }
@@ -123,15 +143,9 @@ async function onCreateConfirm(path: string, content?: string) {
   showCreateDialog.value = false
 }
 
-function closePreview() {
-  fm.clearSelection()
-  isEditing.value = false
-}
-
 // ── 预览模式操作 ──
 function onPreviewSave() {
   previewRef.value?.handleSave()
-  // .md 文件保存后切回预览
   if (isMarkdown.value) {
     isEditing.value = false
   }
@@ -143,7 +157,6 @@ function onPreviewCopy() {
 
 function onPreviewToggleEdit() {
   previewRef.value?.toggleEdit()
-  // 同步编辑状态
   isEditing.value = previewRef.value?.isEditing ?? false
 }
 
@@ -151,76 +164,38 @@ function onPreviewDownload() {
   previewRef.value?.handleDownload()
 }
 
-// ── 拖拽文件到目录：移动文件 ──
-const dragOverDir = ref<string | null>(null)
+// ── 拖拽 ──
+const dragSourcePath = ref('')
 
-function onDirDragOver(e: DragEvent, dirPath: string) {
-  if (!dragSourcePath.value) return
-  e.preventDefault()
-  e.dataTransfer!.dropEffect = 'move'
-  dragOverDir.value = dirPath
-}
-
-function onDirDragLeave() {
-  dragOverDir.value = null
-}
-
-async function onDirDrop(e: DragEvent, dirPath: string) {
-  e.preventDefault()
-  dragOverDir.value = null
-  if (!dragSourcePath.value) return
-  await fm.moveEntry(dragSourcePath.value, dirPath)
+async function onMoveEntry(params: { sourcePath: string; targetDir: string }) {
+  await fm.moveEntry(params.sourcePath, params.targetDir)
   dragSourcePath.value = ''
 }
 
-// ── 格式化文件大小 ──
-// ── 拖拽文件路径到对话框 ──
-const dragSourcePath = ref('')
-
-function onDragStart(e: DragEvent, entry: FileEntry) {
-  if (entry.type !== 'file') return
-  dragSourcePath.value = entry.path
-  e.dataTransfer?.setData('text/plain', `/knowledge/${entry.path}`)
-  e.dataTransfer!.effectAllowed = 'copyMove'
-}
-
-function fmtSize(bytes: number): string {
-  if (!bytes) return '-'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let i = 0
-  let size = bytes
-  while (size >= 1024 && i < units.length - 1) {
-    size /= 1024
-    i++
-  }
-  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
-}
-
-function fmtTime(iso: string): string {
-  if (!iso) return '-'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleString()
-  } catch {
-    return iso
-  }
+function onBreadcrumbDragStart(e: DragEvent, path: string) {
+  e.dataTransfer?.setData('text/plain', `/knowledge/${path}`)
+  e.dataTransfer!.effectAllowed = 'copy'
 }
 </script>
 
 <template>
   <div class="file-browser">
-    <!-- 列表模式：统一头部 = 工具栏 + 面包屑 + 状态 -->
-    <div v-if="!fm.selectedEntry.value" class="fb-header">
+    <!-- 头部 -->
+    <div class="fb-header">
       <div class="fb-header-left">
         <button class="fb-btn" title="刷新" @click="fm.refresh()" :disabled="fm.loading.value">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         </button>
-        <!-- 面包屑 -->
         <template v-for="(item, idx) in fm.breadcrumbs.value" :key="item.path">
           <span v-if="idx > 0" class="fb-bc-sep">/</span>
-          <button class="fb-bc-item" :class="{ active: idx === fm.breadcrumbs.value.length - 1 }" @click="goTo(item.path)">{{ item.label }}</button>
+          <button
+            class="fb-bc-item"
+            :class="{ active: idx === fm.breadcrumbs.value.length - 1 }"
+            :draggable="item.path !== ''"
+            @dragstart="onBreadcrumbDragStart($event, item.path)"
+            @click="goTo(item.path)"
+          >{{ item.label }}</button>
         </template>
-        <!-- 状态 -->
         <span class="fb-inline-status">
           <span v-if="fm.loading.value" class="fb-loading-indicator">加载中...</span>
           <span v-else-if="fm.searchLoading.value" class="fb-loading-indicator">搜索中...</span>
@@ -229,13 +204,39 @@ function fmtTime(iso: string): string {
         </span>
       </div>
       <div class="fb-header-right">
-        <div class="fb-search">
+        <template v-if="fm.activeTab.value">
+          <template v-if="isMarkdown && isTextEditable && isText">
+            <button v-if="isEditing" class="fb-btn" @click="onPreviewToggleEdit">预览</button>
+            <button v-else class="fb-btn" @click="onPreviewToggleEdit">编辑</button>
+            <button class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
+            <button v-if="isEditing" class="fb-btn fb-btn-primary" @click="onPreviewSave" :disabled="fm.fileContentLoading.value">保存</button>
+          </template>
+          <template v-else-if="isTextEditable && isText">
+            <button class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
+            <button class="fb-btn fb-btn-primary" @click="onPreviewSave" :disabled="fm.fileContentLoading.value">保存</button>
+          </template>
+          <button v-else-if="isText" class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
+          <button v-if="isBinary || isPdf || isImage" class="fb-btn" @click="onPreviewDownload" :disabled="!fm.fileUrl.value">下载</button>
+        </template>
+        <div v-if="!fm.activeTab.value" class="fb-search">
           <svg class="fb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input v-model="searchText" type="text" class="fb-search-input" placeholder="搜索..." @input="fm.setSearch(searchText)" />
           <button v-if="fm.searchQuery.value" class="fb-search-clear" @click="searchText = ''; fm.clearSearch()" title="清除搜索">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
+        <button
+          v-if="fm.openTabs.value.length > 0"
+          class="fb-btn"
+          :class="{ 'fb-btn-active': fm.splitMode.value }"
+          @click="fm.splitToggle()"
+          :title="fm.splitMode.value ? '退出分屏' : '分屏'"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="8" height="18" rx="1"/>
+            <rect x="13" y="3" width="8" height="18" rx="1"/>
+          </svg>
+        </button>
         <button class="fb-btn fb-btn-primary" @click="openCreateFile">新建</button>
         <button class="fb-btn" @click="openCreateDir">目录</button>
         <button class="fb-btn" @click="onUploadClick">上传</button>
@@ -243,111 +244,69 @@ function fmtTime(iso: string): string {
       </div>
     </div>
 
-    <!-- 预览模式：统一头部 -->
-    <div v-else class="fb-header fb-header--preview">
-      <button class="fb-btn" @click="closePreview" title="返回">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-      </button>
-      <span class="fb-preview-title">{{ fm.selectedEntry.value.name }}</span>
-      <!-- Markdown: 编辑/预览切换 -->
-      <template v-if="isMarkdown && isTextEditable && isText">
-        <button v-if="isEditing" class="fb-btn" @click="onPreviewToggleEdit">预览</button>
-        <button v-else class="fb-btn" @click="onPreviewToggleEdit">编辑</button>
-        <button class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
-        <button v-if="isEditing" class="fb-btn fb-btn-primary" @click="onPreviewSave" :disabled="fm.fileContentLoading.value">保存</button>
-      </template>
-      <!-- 普通可编辑文本 -->
-      <template v-else-if="isTextEditable && isText">
-        <button class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
-        <button class="fb-btn fb-btn-primary" @click="onPreviewSave" :disabled="fm.fileContentLoading.value">保存</button>
-      </template>
-      <!-- 只读文本 -->
-      <button v-else-if="isText" class="fb-btn" @click="onPreviewCopy">{{ previewRef?.copied ? '已复制' : '复制' }}</button>
-      <!-- 二进制 -->
-      <button v-if="isBinary || isPdf || isImage" class="fb-btn" @click="onPreviewDownload" :disabled="!fm.fileUrl.value">下载</button>
-    </div>
-
-    <!-- 文件列表 -->
-    <div class="fb-list" v-if="!fm.selectedEntry.value">
-      <!-- 返回上级 -->
-      <div
-        v-if="!fm.searchQuery.value && fm.parentPath.value !== null"
-        class="fb-entry fb-entry-up"
-        :class="{ 'fb-entry--drop-target': dragOverDir === fm.parentPath.value }"
-        @click="fm.goUp()"
-        @dragover="fm.parentPath.value !== null && onDirDragOver($event, fm.parentPath.value!)"
-        @dragleave="onDirDragLeave()"
-        @drop="fm.parentPath.value !== null && onDirDrop($event, fm.parentPath.value!)"
-      >
-        <svg class="fb-entry-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5l-7 7 7 7"/><path d="M4 12h16"/></svg>
-        <span class="fb-entry-name">..</span>
+    <!-- ==================== 单屏模式 ==================== -->
+    <template v-if="!fm.splitMode.value">
+      <div v-if="fm.openTabs.value.length > 0" class="fb-tabs">
+        <FileTabs
+          :tabs="fm.openTabs.value"
+          :active-tab-id="fm.activeTabId.value"
+          :focused="true"
+          pane="left"
+          empty-text=""
+          @switch-tab="fm.switchTab"
+          @close-tab="fm.closeTab"
+        />
+        <button
+          v-if="previewRef?.outline?.length"
+          class="fb-tabs-outline-btn"
+          :class="{ active: previewRef?.showOutline }"
+          @click="previewRef!.showOutline = !previewRef!.showOutline"
+          title="大纲"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
       </div>
 
-      <!-- 条目 -->
-      <div
-        v-for="entry in fm.filteredEntries.value"
-        :key="entry.path"
-        class="fb-entry"
-        :class="{
-          'fb-entry-dir': entry.type === 'directory',
-          'fb-entry--draggable': entry.type === 'file',
-          'fb-entry--drop-target': entry.type === 'directory' && dragOverDir === entry.path,
-        }"
-        :draggable="entry.type === 'file'"
-        @dragover="entry.type === 'directory' && onDirDragOver($event, entry.path)"
-        @dragleave="entry.type === 'directory' && onDirDragLeave()"
-        @drop="entry.type === 'directory' && onDirDrop($event, entry.path)"
-        @click="onEntryClick(entry)"
-        @dragstart="onDragStart($event, entry)"
-      >
-        <!-- 图标 -->
-        <svg v-if="entry.type === 'directory'" class="fb-entry-icon fb-icon-dir" width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <svg v-else class="fb-entry-icon fb-icon-file" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-        </svg>
-
-        <!-- 名称 -->
-        <span class="fb-entry-name">{{ entry.name }}</span>
-
-        <!-- 搜索模式下显示路径 -->
-        <span v-if="fm.searchQuery.value" class="fb-entry-path">{{ entry.path }}</span>
-
-        <!-- 大小 -->
-        <span class="fb-entry-size" v-if="entry.type === 'file'">{{ fmtSize(entry.size) }}</span>
-
-        <!-- 时间 -->
-        <span class="fb-entry-time">{{ fmtTime(entry.modified) }}</span>
-
-        <!-- 操作 -->
-        <div class="fb-entry-actions" @click.stop>
-          <button class="fb-action-btn" title="重命名" @click="onRename(entry)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="fb-action-btn fb-action-danger" title="删除" @click="onDelete(entry)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
+      <div class="fb-content">
+        <FileList
+          v-if="!fm.activeTab.value"
+          :entries="fm.filteredEntries.value"
+          :loading="fm.loading.value"
+          :search-query="fm.searchQuery.value"
+          :search-loading="fm.searchLoading.value"
+          :parent-path="fm.parentPath.value"
+          :drag-source-path="dragSourcePath"
+          :is-file-open="fm.isFileOpen"
+          @entry-click="onEntryClick"
+          @rename="onRename"
+          @delete="onDelete"
+          @go-up="fm.goUp()"
+          @move-entry="onMoveEntry"
+          @update:drag-source-path="dragSourcePath = $event"
+        />
+        <FilePreview
+          v-if="fm.activeTab.value"
+          ref="singlePreviewRef"
+          :key="fm.activeTabId.value"
+          :entry="fm.activeTab.value.entry"
+          :content="fm.fileContent.value"
+          :content-type="fm.fileContentType.value"
+          :file-url="fm.fileUrl.value"
+          :loading="fm.fileContentLoading.value"
+          @save="(c: string) => fm.activeTab.value && fm.saveFile(fm.activeTab.value.entry.path, c)"
+        />
       </div>
+    </template>
 
-      <!-- 空状态 -->
-      <div v-if="!fm.loading.value && fm.filteredEntries.value.length === 0" class="fb-empty">
-        <p v-if="fm.searchQuery.value">未找到匹配 "{{ fm.searchQuery.value }}" 的文件</p>
-        <p v-else>此目录为空</p>
-      </div>
-    </div>
-
-    <!-- 文件预览/编辑器 -->
-    <FilePreview
-      ref="previewRef"
-      v-if="fm.selectedEntry.value"
-      :entry="fm.selectedEntry.value"
-      :content="fm.fileContent.value"
-      :content-type="fm.fileContentType.value"
-      :file-url="fm.fileUrl.value"
-      :loading="fm.fileContentLoading.value"
-      @save="(c: string) => fm.selectedEntry.value && fm.saveFile(fm.selectedEntry.value.path, c)"
+    <!-- ==================== 分屏模式 ==================== -->
+    <SplitFileView
+      v-else
+      ref="splitViewRef"
+      @rename="onRename"
+      @delete="onDelete"
     />
 
     <!-- 对话框 -->
@@ -372,6 +331,31 @@ function fmtTime(iso: string): string {
       @confirm="onDeleteConfirm"
       @cancel="deleteTarget = null"
     />
+
+    <!-- 大纲 -->
+    <div
+      v-if="previewRef?.showOutline && previewRef?.outline?.length"
+      class="fb-outline-panel"
+    >
+      <div class="fb-outline-header">
+        <span>大纲</span>
+        <button class="fb-outline-close" @click="previewRef!.showOutline = false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="fb-outline-list">
+        <button
+          v-for="(item, idx) in previewRef.outline"
+          :key="idx"
+          class="fb-outline-item"
+          :style="{ paddingLeft: 12 + (item.level - 1) * 14 + 'px' }"
+          :class="{ 'fb-outline-item--h1': item.level === 1 }"
+          @click="scrollToHeading(item.id)"
+        >
+          {{ item.text }}
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -380,9 +364,10 @@ function fmtTime(iso: string): string {
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
-/* ── 统一头部 ── */
+/* ── 头部 ── */
 .fb-header {
   display: flex;
   align-items: center;
@@ -392,10 +377,6 @@ function fmtTime(iso: string): string {
   gap: 8px;
   flex-shrink: 0;
   min-height: 36px;
-}
-
-.fb-header--preview {
-  justify-content: flex-start;
 }
 
 .fb-header-left,
@@ -410,17 +391,53 @@ function fmtTime(iso: string): string {
   flex-shrink: 0;
 }
 
-.fb-preview-title {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-h, #08060d);
+/* ── 标签栏容器 ── */
+.fb-tabs {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border, #e5e4e7);
+  background: var(--bg-subtle, #faf8fc);
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* ── 内联面包屑 ── */
+/* ── 大纲按钮 ── */
+.fb-tabs-outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-m, #9b8eaa);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.fb-tabs-outline-btn:hover {
+  background: var(--bg-hover, #f5f3f7);
+  color: var(--text-h, #08060d);
+}
+
+.fb-tabs-outline-btn.active {
+  color: var(--accent, #aa3bff);
+  border-color: var(--accent, #aa3bff);
+}
+
+/* ── 内容区域 ── */
+.fb-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── 面包屑 ── */
 .fb-bc-sep {
   font-size: 12px;
   color: var(--text-m, #9b8eaa);
@@ -508,147 +525,19 @@ function fmtTime(iso: string): string {
   color: #fff;
 }
 
+.fb-btn-active {
+  background: var(--accent, #aa3bff);
+  color: #fff;
+  border-color: var(--accent, #aa3bff);
+}
+
+.fb-btn-active:hover {
+  background: var(--accent-hover, #9333ea);
+  color: #fff;
+}
+
 .fb-upload-input {
   display: none;
-}
-
-/* ── 文件列表 ── */
-.fb-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.fb-entry {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 14px;
-  cursor: pointer;
-  transition: background 0.12s;
-  border-bottom: 1px solid var(--border-subtle, #f0edf3);
-}
-
-.fb-entry:hover {
-  background: var(--bg-hover, #f5f3f7);
-}
-
-.fb-entry-up {
-  color: var(--text-m, #9b8eaa);
-  font-weight: 500;
-}
-
-.fb-entry--draggable {
-  cursor: grab;
-}
-
-.fb-entry--draggable:active {
-  cursor: grabbing;
-}
-
-.fb-entry--drop-target {
-  background: rgba(170, 59, 255, 0.08);
-  outline: 2px dashed var(--accent, #aa3bff);
-  outline-offset: -2px;
-}
-
-.fb-entry-icon {
-  flex-shrink: 0;
-}
-
-.fb-icon-dir {
-  color: var(--accent, #aa3bff);
-}
-
-.fb-icon-file {
-  color: var(--text-m, #9b8eaa);
-}
-
-.fb-entry-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text-h, #08060d);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.fb-entry-path {
-  flex: 0 0 auto;
-  font-size: 10px;
-  color: var(--text-m, #9b8eaa);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.fb-entry-size {
-  font-size: 11px;
-  color: var(--text-m, #9b8eaa);
-  flex-shrink: 0;
-  min-width: 55px;
-  text-align: right;
-}
-
-.fb-entry-time {
-  font-size: 11px;
-  color: var(--text-m, #9b8eaa);
-  flex-shrink: 0;
-  min-width: 100px;
-  display: none;
-}
-
-@media (min-width: 480px) {
-  .fb-entry-time {
-    display: block;
-  }
-}
-
-.fb-entry-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.fb-entry:hover .fb-entry-actions {
-  opacity: 1;
-}
-
-.fb-action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-m, #9b8eaa);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.fb-action-btn:hover {
-  background: var(--bg, #fff);
-  color: var(--text-h, #08060d);
-}
-
-.fb-action-danger:hover {
-  color: #ef4444;
-  background: #fef2f2;
-}
-
-/* ── 空状态 ── */
-.fb-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 16px;
-  color: var(--text-m, #9b8eaa);
-  font-size: 13px;
 }
 
 /* ── 搜索框 ── */
@@ -706,6 +595,87 @@ function fmtTime(iso: string): string {
 
 .fb-search-clear:hover {
   background: var(--bg-hover, #f5f3f7);
+  color: var(--text-h, #08060d);
+}
+
+/* ── 大纲 ── */
+.fb-outline-panel {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  z-index: 30;
+  width: 220px;
+  max-height: calc(100% - 80px);
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e5e4e7);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fb-outline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle, #f0edf3);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h, #08060d);
+  flex-shrink: 0;
+}
+
+.fb-outline-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-m, #9b8eaa);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.fb-outline-close:hover {
+  background: var(--bg-hover, #f5f3f7);
+  color: var(--text-h, #08060d);
+}
+
+.fb-outline-list {
+  overflow-y: auto;
+  padding: 4px 0;
+  flex: 1;
+}
+
+.fb-outline-item {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text, #6b6375);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-outline-item:hover {
+  background: var(--bg-hover, #f5f3f7);
+  color: var(--accent, #aa3bff);
+}
+
+.fb-outline-item--h1 {
+  font-weight: 600;
   color: var(--text-h, #08060d);
 }
 </style>
