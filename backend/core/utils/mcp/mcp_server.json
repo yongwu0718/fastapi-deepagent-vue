@@ -22,8 +22,6 @@
         "{App_ID}",
         "-s",
         "{App_Secret}",
-        "-u",
-        "{user_token}",
         "-t",
         "preset.calendar.default"
       ]

@@ -3,33 +3,40 @@
 适用场景：已有本地仓库并关联了远程，需要将代码变更推送到 `master` / `main` 分支。
 
 **1. 查看工作区变更**
+
 ```bash
 git status
 ```
 确认哪些文件被修改、新增或删除。
 
 **2. 暂存所有变更**
+
 ```bash
 git add .
 ```
 
 **3. 提交到本地仓库**
+
 ```bash
 git commit -m "描述本次修改"
 ```
 
+```bash
+git commit --amend --no-edit
+```
+
 **4. 拉取远程最新代码（避免冲突）**
 ```bash
-git pull --rebase origin main
+git pull --rebase origin master
 ```
 
 **5. 推送到 GitHub**
 ```bash
-git push origin main
+git push origin master
 ```
 
 ```bash
-git push -u origin main
+git push -u origin master:main
 ```
 
 > 💡 **快捷版（无冲突时）**  

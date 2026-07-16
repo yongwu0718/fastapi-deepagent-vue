@@ -1,0 +1,23 @@
+# ── 依赖目录 ──
+node_modules
+.venv
+__pycache__
+*.pyc
+*.pyo
+
+# ── Git ──
+.git
+.gitignore
+.gitattributes
+
+# ── Docker 自身 ──
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# ── 敏感配置 ──
+.env
+
+# ── 运行时数据（卷挂载） ──
+data/
+knowledge-base/
