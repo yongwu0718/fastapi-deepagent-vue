@@ -2,13 +2,13 @@
 import { ref, computed, watch } from 'vue'
 import { getFileManager } from './useFileManager'
 import type { FileEntry } from '@/api/files'
-import FileCreateDialog from './FileCreateDialog.vue'
-import FileRenameDialog from './FileRenameDialog.vue'
-import FileDeleteDialog from './FileDeleteDialog.vue'
-import FilePreview from './FilePreview.vue'
-import FileList from './FileList.vue'
-import FileTabs from './FileTabs.vue'
-import SplitFileView from './SplitFileView.vue'
+import FileCreateDialog from './dialogs/FileCreateDialog.vue'
+import FileRenameDialog from './dialogs/FileRenameDialog.vue'
+import FileDeleteDialog from './dialogs/FileDeleteDialog.vue'
+import FilePreview from './preview/FilePreview.vue'
+import FileList from './layout/FileList.vue'
+import FileTabs from './layout/FileTabs.vue'
+import SplitFileView from './layout/SplitFileView.vue'
 
 const fm = getFileManager()
 

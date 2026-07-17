@@ -6,12 +6,24 @@ import {
   deleteRagEndpointApiRagDeletePost,
   getRagConfigEndpointApiRagConfigGet,
   updateRagConfigEndpointApiRagConfigPut,
+  listCollectionsEndpointApiRagCollectionsGet,
+  collectionStatsEndpointApiRagCollectionCollectionNameStatsGet,
+  collectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGet,
+  deleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPost,
+  clearCollectionEndpointApiRagCollectionCollectionNameClearPost,
+  deleteCollectionEndpointApiRagCollectionCollectionNameDelete,
 } from '@/api/client/sdk.gen'
 import type {
   RagHealthResponse,
   RagProcessResponse,
   RagDeleteResponse,
   RagFullConfigModel,
+  CollectionListResponse,
+  CollectionStatsResponse,
+  CollectionDocumentsResponse,
+  DeleteDocsResponse,
+  ClearCollectionResponse,
+  DeleteCollectionResponse,
 } from '@/api/client/types.gen'
 import { toast } from '@/shared/useToast'
 import { createLogger } from '@/shared/useLogger'
@@ -37,6 +49,18 @@ export function useRagManager() {
   const configLoading = ref(false)
   const configSaving = ref(false)
   const configLoaded = ref(false)
+
+  // ── 数据库浏览状态 ──
+  const collections = ref<CollectionListResponse | null>(null)
+  const collectionsLoading = ref(false)
+  const selectedCollection = ref('')
+  const collectionStats = ref<CollectionStatsResponse | null>(null)
+  const statsLoading = ref(false)
+  const documents = ref<CollectionDocumentsResponse | null>(null)
+  const docsLoading = ref(false)
+  const browsePage = ref(1)
+  const browsePageSize = ref(20)
+  const browseActionLoading = ref(false)
 
   // ── 操作 ──
 
@@ -193,6 +217,141 @@ export function useRagManager() {
     }
   }
 
+  // ── 数据库浏览方法 ──
+
+  /** 获取所有集合列表 */
+  async function fetchCollections() {
+    collectionsLoading.value = true
+    try {
+      const res = await listCollectionsEndpointApiRagCollectionsGet()
+      collections.value = res.data as CollectionListResponse
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('获取集合列表失败', e)
+      toast.error('获取集合列表失败', msg)
+    } finally {
+      collectionsLoading.value = false
+    }
+  }
+
+  /** 获取集合统计信息 */
+  async function fetchCollectionStats(collectionName: string, sampleLimit = 5000) {
+    statsLoading.value = true
+    collectionStats.value = null
+    try {
+      const res = await collectionStatsEndpointApiRagCollectionCollectionNameStatsGet({
+        path: { collection_name: collectionName },
+        query: { sample_limit: sampleLimit },
+      })
+      collectionStats.value = res.data as CollectionStatsResponse
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('获取统计失败', e)
+      toast.error('获取统计失败', msg)
+    } finally {
+      statsLoading.value = false
+    }
+  }
+
+  /** 获取集合文档分页列表 */
+  async function fetchDocuments(collectionName: string, page = 1, pageSize = 20) {
+    docsLoading.value = true
+    browsePage.value = page
+    browsePageSize.value = pageSize
+    try {
+      const res = await collectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGet({
+        path: { collection_name: collectionName },
+        query: { page, page_size: pageSize },
+      })
+      documents.value = res.data as CollectionDocumentsResponse
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('获取文档列表失败', e)
+      toast.error('获取文档列表失败', msg)
+    } finally {
+      docsLoading.value = false
+    }
+  }
+
+  /** 选择集合并加载数据和统计 */
+  async function selectCollection(name: string) {
+    selectedCollection.value = name
+    browsePage.value = 1
+    await Promise.all([
+      fetchCollectionStats(name),
+      fetchDocuments(name, 1, browsePageSize.value),
+    ])
+  }
+
+  /** 删除集合中指定文档 */
+  async function deleteDocsFromCollection(collectionName: string, ids: string[]) {
+    if (!ids.length) {
+      toast.warning('请至少提供一个文档 ID')
+      return
+    }
+    browseActionLoading.value = true
+    try {
+      const res = await deleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPost({
+        path: { collection_name: collectionName },
+        body: { ids },
+      })
+      const data = res.data as DeleteDocsResponse
+      toast.success(data.message ?? `已删除 ${data.deleted_count} 个文档`)
+      // 刷新数据
+      await selectCollection(collectionName)
+      fetchHealth()
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('删除文档失败', e)
+      toast.error('删除文档失败', msg)
+    } finally {
+      browseActionLoading.value = false
+    }
+  }
+
+  /** 清空集合 */
+  async function clearCollectionAction(collectionName: string) {
+    browseActionLoading.value = true
+    try {
+      const res = await clearCollectionEndpointApiRagCollectionCollectionNameClearPost({
+        path: { collection_name: collectionName },
+      })
+      const data = res.data as ClearCollectionResponse
+      toast.success(data.message ?? `集合已清空`)
+      await selectCollection(collectionName)
+      fetchHealth()
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('清空集合失败', e)
+      toast.error('清空集合失败', msg)
+    } finally {
+      browseActionLoading.value = false
+    }
+  }
+
+  /** 删除整个集合 */
+  async function deleteCollectionAction(collectionName: string) {
+    browseActionLoading.value = true
+    try {
+      const res = await deleteCollectionEndpointApiRagCollectionCollectionNameDelete({
+        path: { collection_name: collectionName },
+      })
+      const data = res.data as DeleteCollectionResponse
+      toast.success(data.message ?? `集合已删除`)
+      selectedCollection.value = ''
+      documents.value = null
+      collectionStats.value = null
+      await fetchCollections()
+      fetchHealth()
+    } catch (e: any) {
+      const msg = e?.body?.detail ?? e?.message ?? String(e)
+      log.error('删除集合失败', e)
+      toast.error('删除集合失败', msg)
+    } finally {
+      browseActionLoading.value = false
+    }
+  }
+
   return {
     // 状态
     health,
@@ -214,5 +373,23 @@ export function useRagManager() {
     deleteByIds,
     fetchConfig,
     saveConfig,
+    // 数据库浏览
+    collections,
+    collectionsLoading,
+    selectedCollection,
+    collectionStats,
+    statsLoading,
+    documents,
+    docsLoading,
+    browsePage,
+    browsePageSize,
+    browseActionLoading,
+    fetchCollections,
+    fetchCollectionStats,
+    fetchDocuments,
+    selectCollection,
+    deleteDocsFromCollection,
+    clearCollectionAction,
+    deleteCollectionAction,
   }
 }

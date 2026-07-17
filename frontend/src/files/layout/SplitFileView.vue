@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { getFileManager } from './useFileManager'
+import { getFileManager } from '../useFileManager'
 import FileList from './FileList.vue'
 import FileTabs from './FileTabs.vue'
-import FilePreview from './FilePreview.vue'
+import FilePreview from '../preview/FilePreview.vue'
 import SplitPane from 'split-pane-v3'
 
 const fm = getFileManager()

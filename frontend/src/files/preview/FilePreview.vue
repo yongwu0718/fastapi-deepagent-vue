@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, toRef } from 'vue'
 import type { FileEntry } from '@/api/files'
-import { useMarkdownRenderer } from './useMarkdownRenderer'
-import { getFileManager } from './useFileManager'
+import { useMarkdownRenderer } from '../rendering/useMarkdownRenderer'
+import { getFileManager } from '../useFileManager'
 
 const props = defineProps<{
   entry: FileEntry
@@ -189,15 +189,48 @@ function onMarkdownClick(e: MouseEvent) {
   // .md 链接跳转
   const anchor = (e.target as HTMLElement).closest('a')
   if (!anchor) return
-  const href = anchor.getAttribute('href')
-  if (!href || /^(https?:)?\/\//.test(href) || !href.endsWith('.md')) return
+  const rawHref = anchor.getAttribute('href')
+  if (!rawHref || /^(https?:)?\/\//.test(rawHref) || !rawHref.endsWith('.md')) return
   e.preventDefault()
+  e.stopPropagation()
+  // 移除 target 属性，避免浏览器尝试打开新标签页
+  anchor.removeAttribute('target')
+
+  // DOMPurify 会把中文 href 编码成 %XX 格式，先解码回来
+  let href = rawHref
+  try {
+    href = decodeURIComponent(rawHref)
+  } catch {
+    // 不是合法的百分号编码，保持原样
+  }
+
+  console.log('[FilePreview] .md 链接点击', { rawHref, decoded: href, currentFilePath: props.entry.path })
+
+  // 规范化 path：解析 ./ 和 ../ 前缀
   const currentDir = props.entry.path.includes('/')
     ? props.entry.path.substring(0, props.entry.path.lastIndexOf('/'))
     : ''
-  const resolved = currentDir ? `${currentDir}/${href}` : href
+  const segments = currentDir ? currentDir.split('/').filter(Boolean) : []
+
+  // 去掉开头的 ./
+  let normalized = href
+  while (normalized.startsWith('./')) {
+    normalized = normalized.substring(2)
+  }
+
+  // 逐个处理路径段
+  for (const part of normalized.split('/')) {
+    if (part === '..') {
+      segments.pop()
+    } else if (part !== '.') {
+      segments.push(part)
+    }
+  }
+  const resolved = segments.join('/')
+  console.log('[FilePreview] 解析后的路径', { href, normalized, currentDir, resolved })
+
   getFileManager().selectEntry({
-    name: href.split('/').pop() ?? href,
+    name: resolved.split('/').pop() ?? resolved,
     path: resolved,
     type: 'file',
     size: 0,
@@ -253,7 +286,7 @@ defineExpose({
         @mouseup="onMermaidMouseUp"
         @mouseleave="onMermaidMouseUp"
       >
-        <div class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+        <div class="fp-markdown" v-html="renderedHtml" @click.capture="onMarkdownClick" />
       </div>
     </div>
 
@@ -278,7 +311,7 @@ defineExpose({
         @mouseup="onMermaidMouseUp"
         @mouseleave="onMermaidMouseUp"
       >
-        <div class="fp-markdown" v-html="renderedHtml" @click="onMarkdownClick" />
+        <div class="fp-markdown" v-html="renderedHtml" @click.capture="onMarkdownClick" />
       </div>
     </div>
 

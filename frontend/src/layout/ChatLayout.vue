@@ -32,8 +32,16 @@ const {
   onResizeStart: onSidebarResize,
 } = useFilePanelResize(300)
 
-/** 左侧文件面板开关 */
-const filePanelOpen = ref(false)
+// ── 文件面板持久化 ──
+const LS_FILE_PANEL_OPEN = 'chat_file_panel_open'
+
+/** 左侧文件面板开关 — 从 localStorage 恢复上次状态 */
+const filePanelOpen = ref(localStorage.getItem(LS_FILE_PANEL_OPEN) === 'true')
+
+watch(filePanelOpen, (open) => {
+  localStorage.setItem(LS_FILE_PANEL_OPEN, String(open))
+})
+
 const {
   panelWidth: filePanelWidth,
   isResizing: fileResizing,
@@ -56,11 +64,27 @@ watch(shouldAutoOpenSidebar, (val) => {
   }
 })
 
-// ── 首次打开文件面板时自动加载根目录 ──
+// ── 文件面板初始化：首次打开时恢复持久化状态或加载根目录 ──
 const fm = getFileManager()
-watch(filePanelOpen, (open) => {
-  if (open && fm.entries.value.length === 0) {
+
+async function initFilePanel() {
+  if (fm.entries.value.length > 0) return // 已初始化
+  const restored = await fm.restoreState()
+  if (!restored) {
     fm.loadDirectory()
+  }
+}
+
+watch(filePanelOpen, async (open) => {
+  if (open) {
+    await initFilePanel()
+  }
+})
+
+// 如果刷新前文件面板是打开的，onMounted 时恢复
+onMounted(async () => {
+  if (filePanelOpen.value) {
+    await initFilePanel()
   }
 })
 

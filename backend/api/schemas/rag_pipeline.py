@@ -195,3 +195,71 @@ class RAGFullConfigModel(BaseModel):
     """完整的 rag_config.yaml 结构 —— 读/写共用。"""
     embedding: RAGEmbeddingConfig = Field(default_factory=RAGEmbeddingConfig)
     rag: RAGPipelineSection = Field(default_factory=RAGPipelineSection)
+
+
+# ═══════════════════════════════════════════
+#  ChromaDB 数据浏览相关 Schema
+# ═══════════════════════════════════════════
+
+class CollectionInfo(BaseModel):
+    """集合基本信息。"""
+    name: str = Field(..., description="集合名称")
+    count: int = Field(..., description="文档数量")
+
+
+class CollectionListResponse(BaseModel):
+    """所有集合列表。"""
+    collections: list[CollectionInfo] = Field(default_factory=list, description="集合列表")
+
+
+class CollectionStatsResponse(BaseModel):
+    """集合统计数据。"""
+    collection_name: str = Field(..., description="集合名称")
+    total_count: int = Field(..., description="总文档数")
+    sampled_count: int = Field(..., description="实际采样数（可能小于 total_count）")
+    non_empty_count: int = Field(..., description="非空文档数")
+    empty_count: int = Field(..., description="空文档数")
+    empty_rate: str = Field(..., description="文档非空率（百分比）")
+    avg_doc_length: float = Field(..., description="平均文档长度（字符数）")
+    vector_dimension: Optional[int] = Field(default=None, description="向量维度")
+    metadata_coverage: list[dict] = Field(default_factory=list, description="元数据字段覆盖率列表")
+
+
+class CollectionDocument(BaseModel):
+    """集合中的单条文档。"""
+    id: str = Field(..., description="文档 ID")
+    document: Optional[str] = Field(default=None, description="文档内容")
+    metadata: Optional[dict] = Field(default=None, description="元数据键值对")
+
+
+class CollectionDocumentsResponse(BaseModel):
+    """分页文档响应。"""
+    collection_name: str = Field(..., description="集合名称")
+    page: int = Field(..., description="当前页码")
+    page_size: int = Field(..., description="每页条数")
+    total: int = Field(..., description="总文档数")
+    documents: list[CollectionDocument] = Field(default_factory=list, description="当前页文档列表")
+
+
+class DeleteDocsRequest(BaseModel):
+    """批量删除文档请求。"""
+    ids: list[str] = Field(..., min_length=1, description="待删除的文档 ID 列表")
+
+
+class DeleteDocsResponse(BaseModel):
+    """批量删除文档响应。"""
+    deleted_count: int = Field(..., description="成功删除的文档数")
+    message: str = Field(default="删除成功", description="操作描述")
+
+
+class ClearCollectionResponse(BaseModel):
+    """清空集合响应。"""
+    deleted_count: int = Field(..., description="清除的文档数")
+    collection_name: str = Field(..., description="集合名称")
+    message: str = Field(default="集合已清空", description="操作描述")
+
+
+class DeleteCollectionResponse(BaseModel):
+    """删除集合响应。"""
+    collection_name: str = Field(..., description="已删除的集合名称")
+    message: str = Field(default="集合已删除", description="操作描述")

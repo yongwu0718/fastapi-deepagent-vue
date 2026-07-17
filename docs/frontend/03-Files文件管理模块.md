@@ -8,17 +8,30 @@
 
 ```
 files/
-├── useFileManager.ts        # 核心状态管理（模块级单例：目录浏览 + 标签页 + 分屏 + CRUD）
-├── useMarkdownRenderer.ts   # markdown-it 渲染引擎 + 标题大纲提取
-├── FileBrowser.vue          # 主容器（头部 + 模式切换 + 对话框 + 大纲面板）
-├── FileList.vue             # 可复用文件列表组件
-├── FileTabs.vue             # 可复用标签栏组件（支持跨窗格拖拽）
-├── SplitFileView.vue        # 分屏模式主体（双标签栏 + SplitPane + 左右列表/预览）
-├── FilePreview.vue          # 文件内容预览组件
-├── FileBreadcrumb.vue       # 面包屑导航（纯展示）
-├── FileCreateDialog.vue     # 新建文件/目录对话框
-├── FileRenameDialog.vue     # 重命名对话框
-└── FileDeleteDialog.vue     # 删除确认对话框
+├── useFileManager.ts            # 主入口（组合子模块 + 模块级单例，~120 行）
+├── FileBrowser.vue              # 主容器（头部 + 模式切换 + 对话框 + 大纲面板）
+├── core/                        # 核心状态层
+│   ├── useFileState.ts          #   所有 ref 状态 + computed 计算属性
+│   └── useFilePersistence.ts    #   localStorage 持久化（保存 / 恢复）
+├── features/                    # 功能子模块
+│   ├── useFileDirectory.ts      #   目录加载与导航
+│   ├── useFileTabs.ts           #   标签页管理（打开/关闭/切换/读取文件内容）
+│   ├── useFileSplit.ts          #   分屏模式（开启/关闭/移动标签到窗格）
+│   ├── useFileOps.ts            #   文件 CRUD（创建/上传/重命名/移动/保存/删除）
+│   └── useFileSearch.ts         #   防抖搜索逻辑
+├── rendering/                   # 渲染引擎
+│   └── useMarkdownRenderer.ts   #   markdown-it 渲染 + 标题大纲提取
+├── layout/                      # 布局组件
+│   ├── FileList.vue             #   可复用文件列表
+│   ├── FileTabs.vue             #   可复用标签栏（支持跨窗格拖拽）
+│   └── SplitFileView.vue        #   分屏模式主体（双标签栏 + SplitPane）
+├── preview/                     # 预览 + 导航
+│   ├── FilePreview.vue          #   文件内容预览（含 Mermaid 缩放）
+│   └── FileBreadcrumb.vue       #   面包屑导航（纯展示）
+└── dialogs/                     # 对话框
+    ├── FileCreateDialog.vue     #   新建文件/目录
+    ├── FileRenameDialog.vue     #   重命名
+    └── FileDeleteDialog.vue     #   删除确认
 ```
 
 ### 组件复用关系
@@ -37,7 +50,29 @@ FileBrowser.vue (主容器)
 
 ## useFileManager（核心状态管理）
 
-**模块级单例**，通过 `getFileManager()` 获取全局唯一实例。
+**模块级单例**，通过 `getFileManager()` 获取全局唯一实例。主入口仅 ~120 行，核心逻辑拆分为 7 个子模块，通过 `createXxx(state, deps)` 工厂函数模式组合：
+
+| 子模块 | 职责 |
+|--------|------|
+| `useFileState.ts` | 所有响应式状态（ref）+ 计算属性（computed），纯状态层，无副作用 |
+| `useFileDirectory.ts` | 目录加载 `loadDirectory()`、导航 `navigateTo()`、上级 `goUp()`、刷新 `refresh()` |
+| `useFileTabs.ts` | 标签页完整生命周期：文件读取 `_readFileToTab()`、打开 `openFile()`、关闭 `closeTab()`（含 blob URL 清理）、切换 `switchTab()` |
+| `useFileSplit.ts` | 分屏模式：开启/关闭 `splitToggle()`、标签跨窗格移动 `moveTabToPane()` |
+| `useFileOps.ts` | 文件 CRUD：创建、上传、重命名、移动、保存（同步所有标签）、删除（自动关闭关联标签） |
+| `useFileSearch.ts` | 防抖搜索 `setSearch()` / `clearSearch()`（300ms 防抖） |
+| `useFilePersistence.ts` | localStorage 状态持久化 `_scheduleSave()`（300ms 防抖写入）/ `restoreState()`（页面恢复时重建标签 + 目录 + 分屏） |
+
+### 依赖注入流程
+
+```
+createFileState() + createFileComputed(state)     → 状态层
+createFileDirectory(state, scheduleSaveRef)        → 目录
+createFileTabs(state, scheduleSaveRef)             → 标签页
+createFilePersistence(state, computed, dir, tabs)  → 持久化（迟到绑定注入 _scheduleSave）
+createFileOps(state, loadDir, closeTab)            → CRUD
+createFileSplit(state, closeTab)                   → 分屏
+createFileSearch(state)                            → 搜索
+```
 
 ### FileTab 接口
 

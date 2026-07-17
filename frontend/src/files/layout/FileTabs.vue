@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { FileTab } from './useFileManager'
+import type { FileTab } from '../useFileManager'
 
 const props = defineProps<{
   tabs: FileTab[]

@@ -220,6 +220,196 @@ export type ChunkDetail = {
 };
 
 /**
+ * ClearCollectionResponse
+ *
+ * 清空集合响应。
+ */
+export type ClearCollectionResponse = {
+    /**
+     * Deleted Count
+     *
+     * 清除的文档数
+     */
+    deleted_count: number;
+    /**
+     * Collection Name
+     *
+     * 集合名称
+     */
+    collection_name: string;
+    /**
+     * Message
+     *
+     * 操作描述
+     */
+    message?: string;
+};
+
+/**
+ * CollectionDocument
+ *
+ * 集合中的单条文档。
+ */
+export type CollectionDocument = {
+    /**
+     * Id
+     *
+     * 文档 ID
+     */
+    id: string;
+    /**
+     * Document
+     *
+     * 文档内容
+     */
+    document?: string | null;
+    /**
+     * Metadata
+     *
+     * 元数据键值对
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+/**
+ * CollectionDocumentsResponse
+ *
+ * 分页文档响应。
+ */
+export type CollectionDocumentsResponse = {
+    /**
+     * Collection Name
+     *
+     * 集合名称
+     */
+    collection_name: string;
+    /**
+     * Page
+     *
+     * 当前页码
+     */
+    page: number;
+    /**
+     * Page Size
+     *
+     * 每页条数
+     */
+    page_size: number;
+    /**
+     * Total
+     *
+     * 总文档数
+     */
+    total: number;
+    /**
+     * Documents
+     *
+     * 当前页文档列表
+     */
+    documents?: Array<CollectionDocument>;
+};
+
+/**
+ * CollectionInfo
+ *
+ * 集合基本信息。
+ */
+export type CollectionInfo = {
+    /**
+     * Name
+     *
+     * 集合名称
+     */
+    name: string;
+    /**
+     * Count
+     *
+     * 文档数量
+     */
+    count: number;
+};
+
+/**
+ * CollectionListResponse
+ *
+ * 所有集合列表。
+ */
+export type CollectionListResponse = {
+    /**
+     * Collections
+     *
+     * 集合列表
+     */
+    collections?: Array<CollectionInfo>;
+};
+
+/**
+ * CollectionStatsResponse
+ *
+ * 集合统计数据。
+ */
+export type CollectionStatsResponse = {
+    /**
+     * Collection Name
+     *
+     * 集合名称
+     */
+    collection_name: string;
+    /**
+     * Total Count
+     *
+     * 总文档数
+     */
+    total_count: number;
+    /**
+     * Sampled Count
+     *
+     * 实际采样数（可能小于 total_count）
+     */
+    sampled_count: number;
+    /**
+     * Non Empty Count
+     *
+     * 非空文档数
+     */
+    non_empty_count: number;
+    /**
+     * Empty Count
+     *
+     * 空文档数
+     */
+    empty_count: number;
+    /**
+     * Empty Rate
+     *
+     * 文档非空率（百分比）
+     */
+    empty_rate: string;
+    /**
+     * Avg Doc Length
+     *
+     * 平均文档长度（字符数）
+     */
+    avg_doc_length: number;
+    /**
+     * Vector Dimension
+     *
+     * 向量维度
+     */
+    vector_dimension?: number | null;
+    /**
+     * Metadata Coverage
+     *
+     * 元数据字段覆盖率列表
+     */
+    metadata_coverage?: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+/**
  * CreateDirectoryRequest
  *
  * 创建目录请求
@@ -273,6 +463,60 @@ export type Decision = {
     edited_action?: {
         [key: string]: unknown;
     } | null;
+};
+
+/**
+ * DeleteCollectionResponse
+ *
+ * 删除集合响应。
+ */
+export type DeleteCollectionResponse = {
+    /**
+     * Collection Name
+     *
+     * 已删除的集合名称
+     */
+    collection_name: string;
+    /**
+     * Message
+     *
+     * 操作描述
+     */
+    message?: string;
+};
+
+/**
+ * DeleteDocsRequest
+ *
+ * 批量删除文档请求。
+ */
+export type DeleteDocsRequest = {
+    /**
+     * Ids
+     *
+     * 待删除的文档 ID 列表
+     */
+    ids: Array<string>;
+};
+
+/**
+ * DeleteDocsResponse
+ *
+ * 批量删除文档响应。
+ */
+export type DeleteDocsResponse = {
+    /**
+     * Deleted Count
+     *
+     * 成功删除的文档数
+     */
+    deleted_count: number;
+    /**
+     * Message
+     *
+     * 操作描述
+     */
+    message?: string;
 };
 
 /**
@@ -2174,3 +2418,189 @@ export type UpdateRagConfigEndpointApiRagConfigPutResponses = {
      */
     200: unknown;
 };
+
+export type ListCollectionsEndpointApiRagCollectionsGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/rag/collections';
+};
+
+export type ListCollectionsEndpointApiRagCollectionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollectionListResponse;
+};
+
+export type ListCollectionsEndpointApiRagCollectionsGetResponse = ListCollectionsEndpointApiRagCollectionsGetResponses[keyof ListCollectionsEndpointApiRagCollectionsGetResponses];
+
+export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Collection Name
+         */
+        collection_name: string;
+    };
+    query?: {
+        /**
+         * Sample Limit
+         *
+         * 统计采样上限
+         */
+        sample_limit?: number;
+    };
+    url: '/api/rag/collection/{collection_name}/stats';
+};
+
+export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetError = CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors[keyof CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors];
+
+export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollectionStatsResponse;
+};
+
+export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponse = CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses[keyof CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses];
+
+export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Collection Name
+         */
+        collection_name: string;
+    };
+    query?: {
+        /**
+         * Page
+         *
+         * 页码
+         */
+        page?: number;
+        /**
+         * Page Size
+         *
+         * 每页条数
+         */
+        page_size?: number;
+    };
+    url: '/api/rag/collection/{collection_name}/documents';
+};
+
+export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetError = CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors[keyof CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors];
+
+export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollectionDocumentsResponse;
+};
+
+export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponse = CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses[keyof CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses];
+
+export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostData = {
+    body: DeleteDocsRequest;
+    path: {
+        /**
+         * Collection Name
+         */
+        collection_name: string;
+    };
+    query?: never;
+    url: '/api/rag/collection/{collection_name}/delete-docs';
+};
+
+export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostError = DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors[keyof DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors];
+
+export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: DeleteDocsResponse;
+};
+
+export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponse = DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses[keyof DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses];
+
+export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData = {
+    body?: never;
+    path: {
+        /**
+         * Collection Name
+         */
+        collection_name: string;
+    };
+    query?: never;
+    url: '/api/rag/collection/{collection_name}/clear';
+};
+
+export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostError = ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors[keyof ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors];
+
+export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClearCollectionResponse;
+};
+
+export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponse = ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses[keyof ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses];
+
+export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Collection Name
+         */
+        collection_name: string;
+    };
+    query?: never;
+    url: '/api/rag/collection/{collection_name}';
+};
+
+export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteError = DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors[keyof DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors];
+
+export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: DeleteCollectionResponse;
+};
+
+export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponse = DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses[keyof DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses];

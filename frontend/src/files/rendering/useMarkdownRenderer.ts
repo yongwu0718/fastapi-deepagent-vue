@@ -79,14 +79,22 @@ md.use(multimdTable, {
 })
 md.use(markdownItKatex, { throwOnError: false, errorColor: '#cc0000', output: 'html' })
 
-// ── 给所有链接添加 target="_blank" ──
+// ── 区分内/外链：外部链接加 target="_blank"，内部 .md 链接标记为文件内跳转 ──
 const defaultLinkRender = md.renderer.rules.link_open ?? function (tokens, idx, options, _env, self) {
   return self.renderToken(tokens, idx, options)
 }
 md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
   const token = tokens[idx]
-  token.attrSet('target', '_blank')
-  token.attrSet('rel', 'noopener noreferrer')
+  const href = token.attrGet('href') || ''
+  if (/^https?:\/\//i.test(href)) {
+    // 外部链接：新窗口打开
+    token.attrSet('target', '_blank')
+    token.attrSet('rel', 'noopener noreferrer')
+  } else if (href.endsWith('.md')) {
+    // 内部 .md 链接：由 FilePreview 点击事件处理，标记类名便于识别
+    const existing = token.attrGet('class') || ''
+    token.attrSet('class', (existing + ' md-internal-link').trim())
+  }
   return defaultLinkRender(tokens, idx, options, env, self)
 }
 

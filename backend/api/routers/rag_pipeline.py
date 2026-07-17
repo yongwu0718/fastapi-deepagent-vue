@@ -9,6 +9,12 @@ from backend.api.services.rag_service import (
     health_check,
     get_rag_config,
     update_rag_config,
+    list_collections,
+    get_collection_stats,
+    get_collection_documents,
+    delete_collection_docs,
+    clear_collection,
+    delete_collection,
 )
 from backend.api.schemas.rag_pipeline import (
     RAGProcessRequest,
@@ -17,6 +23,13 @@ from backend.api.schemas.rag_pipeline import (
     RAGDeleteResponse,
     RAGHealthResponse,
     RAGFullConfigModel,
+    CollectionListResponse,
+    CollectionStatsResponse,
+    CollectionDocumentsResponse,
+    DeleteDocsRequest,
+    DeleteDocsResponse,
+    ClearCollectionResponse,
+    DeleteCollectionResponse,
 )
 from backend.api.utils.error_handlers import handle_endpoint_errors
 from backend.api.utils.exceptions import ErrorCode
@@ -109,3 +122,86 @@ async def update_rag_config_endpoint(body: RAGFullConfigModel):
     """覆写 rag_config.yaml，自动重载运行时配置。"""
     logger.info("PUT /api/rag/config")
     return await update_rag_config(body)
+
+
+# ═══════════════════════════════════════════
+#  ChromaDB 数据浏览端点
+# ═══════════════════════════════════════════
+
+@router.get("/collections", response_model=CollectionListResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_VECTORSTORE_ERROR,
+    log_msg="列出集合异常",
+    detail_msg="获取集合列表失败",
+)
+async def list_collections_endpoint():
+    """列出 ChromaDB 中所有集合。"""
+    logger.info("GET /api/rag/collections")
+    return await list_collections()
+
+
+@router.get("/collection/{collection_name}/stats", response_model=CollectionStatsResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_VECTORSTORE_ERROR,
+    log_msg="获取集合统计异常 | collection={collection_name}",
+    detail_msg="获取集合统计信息失败",
+)
+async def collection_stats_endpoint(
+    collection_name: str,
+    sample_limit: int = Query(5000, ge=100, le=100000, description="统计采样上限"),
+):
+    """获取指定集合的统计信息（文档数、非空率、平均长度、向量维度、元数据覆盖率）。"""
+    logger.info("GET /api/rag/collection/%s/stats | limit=%d", collection_name, sample_limit)
+    return await get_collection_stats(collection_name, sample_limit)
+
+
+@router.get("/collection/{collection_name}/documents", response_model=CollectionDocumentsResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_VECTORSTORE_ERROR,
+    log_msg="获取文档列表异常 | collection={collection_name}",
+    detail_msg="获取文档列表失败",
+)
+async def collection_documents_endpoint(
+    collection_name: str,
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=5, le=500, description="每页条数"),
+):
+    """分页获取集合中的文档（ID、内容、元数据）。"""
+    logger.info("GET /api/rag/collection/%s/documents | page=%d | size=%d", collection_name, page, page_size)
+    return await get_collection_documents(collection_name, page, page_size)
+
+
+@router.post("/collection/{collection_name}/delete-docs", response_model=DeleteDocsResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_DELETE_FAILED,
+    log_msg="删除文档异常 | collection={collection_name} | ids={body.ids}",
+    detail_msg="删除文档失败",
+)
+async def delete_collection_docs_endpoint(collection_name: str, body: DeleteDocsRequest):
+    """从指定集合中批量删除文档。"""
+    logger.info("POST /api/rag/collection/%s/delete-docs | ids=%d", collection_name, len(body.ids))
+    return await delete_collection_docs(collection_name, body.ids)
+
+
+@router.post("/collection/{collection_name}/clear", response_model=ClearCollectionResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_DELETE_FAILED,
+    log_msg="清空集合异常 | collection={collection_name}",
+    detail_msg="清空集合失败",
+)
+async def clear_collection_endpoint(collection_name: str):
+    """清空集合中的所有文档。"""
+    logger.info("POST /api/rag/collection/%s/clear", collection_name)
+    return await clear_collection(collection_name)
+
+
+@router.delete("/collection/{collection_name}", response_model=DeleteCollectionResponse)
+@handle_endpoint_errors(
+    ErrorCode.RAG_DELETE_FAILED,
+    log_msg="删除集合异常 | collection={collection_name}",
+    detail_msg="删除集合失败",
+)
+async def delete_collection_endpoint(collection_name: str):
+    """删除整个集合。"""
+    logger.info("DELETE /api/rag/collection/%s", collection_name)
+    return await delete_collection(collection_name)

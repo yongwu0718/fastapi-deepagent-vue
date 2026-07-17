@@ -29,6 +29,14 @@ from backend.api.schemas.rag_pipeline import (
     RAGHealthResponse,
     SplitConfig,
     RAGFullConfigModel,
+    CollectionInfo,
+    CollectionListResponse,
+    CollectionStatsResponse,
+    CollectionDocument,
+    CollectionDocumentsResponse,
+    DeleteDocsResponse,
+    ClearCollectionResponse,
+    DeleteCollectionResponse,
 )
 from backend.api.utils.exceptions import AppException, ErrorCode
 from backend.config.logger import get_logger
@@ -419,6 +427,277 @@ async def health_check() -> RAGHealthResponse:
         embedding_model=EMBEDDING_MODEL,
         embedding_base_url=EMBEDDING_BASE_URL,
     )
+
+
+# ═══════════════════════════════════════════
+#  ChromaDB 直连（数据浏览）
+# ═══════════════════════════════════════════
+
+import chromadb
+from chromadb.api import ClientAPI as ChromaClientAPI
+
+_chroma_client: Optional[ChromaClientAPI] = None
+
+
+def _get_chroma_client() -> ChromaClientAPI:
+    """获取 chromadb.PersistentClient 直连实例（不经过 LangChain 封装）。"""
+    global _chroma_client
+    if _chroma_client is None:
+        _chroma_client = chromadb.PersistentClient(path=CHROMA_DB)
+        logger.info("ChromaDB 直连客户端已初始化 | dir=%s", CHROMA_DB)
+    return _chroma_client
+
+
+async def list_collections() -> CollectionListResponse:
+    """列出 ChromaDB 中所有集合。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+        collections = await loop.run_in_executor(None, client.list_collections)
+
+        result: list[CollectionInfo] = []
+        for col in collections:
+            col_count = await loop.run_in_executor(None, col.count)
+            result.append(CollectionInfo(name=col.name, count=col_count))
+
+        logger.info("列出集合 | count=%d", len(result))
+        return CollectionListResponse(collections=result)
+
+    except Exception as e:
+        logger.exception("列出集合失败")
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_VECTORSTORE_ERROR,
+            detail=f"列出集合失败: {e}",
+        )
+
+
+async def get_collection_stats(collection_name: str, sample_limit: int = 5000) -> CollectionStatsResponse:
+    """获取指定集合的统计信息。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+
+        collection = await loop.run_in_executor(None, client.get_collection, collection_name)
+        total_count = await loop.run_in_executor(None, collection.count)
+
+        if total_count == 0:
+            return CollectionStatsResponse(
+                collection_name=collection_name,
+                total_count=0,
+                sampled_count=0,
+                non_empty_count=0,
+                empty_count=0,
+                empty_rate="0%",
+                avg_doc_length=0,
+                vector_dimension=None,
+                metadata_coverage=[],
+            )
+
+        actual_limit = min(total_count, sample_limit)
+        sample = await loop.run_in_executor(
+            None, lambda: collection.get(limit=actual_limit, include=["documents", "metadatas", "embeddings"]),
+        )
+
+        docs = sample.get("documents") or []
+        metas = sample.get("metadatas") or []
+        embeddings = sample.get("embeddings") or []
+
+        # 文档统计
+        non_empty = 0
+        total_length = 0
+        for doc in docs:
+            if doc and isinstance(doc, str) and len(doc.strip()) > 0:
+                non_empty += 1
+                total_length += len(doc)
+        empty_count = len(docs) - non_empty
+        avg_length = total_length / non_empty if non_empty > 0 else 0
+        empty_rate = f"{non_empty / len(docs) * 100:.1f}%" if docs else "0%"
+
+        # 向量维度
+        vector_dim = None
+        if embeddings and len(embeddings) > 0 and embeddings[0]:
+            vector_dim = len(embeddings[0])
+
+        # 元数据覆盖率
+        coverage_list: list[dict] = []
+        if metas:
+            all_keys: set[str] = set()
+            key_counts: dict[str, int] = {}
+            for meta in metas:
+                if isinstance(meta, dict):
+                    for k in meta.keys():
+                        all_keys.add(k)
+                        key_counts[k] = key_counts.get(k, 0) + 1
+            for k in sorted(all_keys):
+                cnt = key_counts.get(k, 0)
+                coverage_list.append({
+                    "field": k,
+                    "count": cnt,
+                    "coverage": f"{cnt / len(metas) * 100:.1f}%",
+                })
+
+        logger.info(
+            "获取集合统计 | collection=%s | total=%d | sampled=%d | avg_len=%.0f | dim=%s",
+            collection_name, total_count, actual_limit, avg_length, vector_dim,
+        )
+
+        return CollectionStatsResponse(
+            collection_name=collection_name,
+            total_count=total_count,
+            sampled_count=actual_limit,
+            non_empty_count=non_empty,
+            empty_count=empty_count,
+            empty_rate=empty_rate,
+            avg_doc_length=round(avg_length, 1),
+            vector_dimension=vector_dim,
+            metadata_coverage=coverage_list,
+        )
+
+    except Exception as e:
+        logger.exception("获取集合统计失败 | collection=%s", collection_name)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_VECTORSTORE_ERROR,
+            detail=f"获取集合统计失败: {e}",
+        )
+
+
+async def get_collection_documents(
+    collection_name: str, page: int = 1, page_size: int = 20,
+) -> CollectionDocumentsResponse:
+    """分页获取集合中的文档。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+
+        collection = await loop.run_in_executor(None, client.get_collection, collection_name)
+        total = await loop.run_in_executor(None, collection.count)
+
+        offset = (page - 1) * page_size
+        data = await loop.run_in_executor(
+            None,
+            lambda: collection.get(limit=page_size, offset=offset, include=["documents", "metadatas"]),
+        )
+
+        docs: list[CollectionDocument] = []
+        ids = data.get("ids") or []
+        documents = data.get("documents") or []
+        metadatas = data.get("metadatas") or []
+
+        for i in range(len(ids)):
+            doc = CollectionDocument(
+                id=ids[i],
+                document=documents[i] if i < len(documents) else None,
+                metadata=metadatas[i] if i < len(metadatas) else None,
+            )
+            docs.append(doc)
+
+        logger.info("获取文档列表 | collection=%s | page=%d | size=%d | total=%d",
+                     collection_name, page, page_size, total)
+
+        return CollectionDocumentsResponse(
+            collection_name=collection_name,
+            page=page,
+            page_size=page_size,
+            total=total,
+            documents=docs,
+        )
+
+    except Exception as e:
+        logger.exception("获取文档列表失败 | collection=%s", collection_name)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_VECTORSTORE_ERROR,
+            detail=f"获取文档列表失败: {e}",
+        )
+
+
+async def delete_collection_docs(collection_name: str, ids: list[str]) -> DeleteDocsResponse:
+    """从指定集合中删除文档。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+
+        collection = await loop.run_in_executor(None, client.get_collection, collection_name)
+        await loop.run_in_executor(None, lambda: collection.delete(ids=ids))
+
+        deleted_count = len(ids)
+        logger.info("文档删除成功 | collection=%s | deleted=%d", collection_name, deleted_count)
+
+        return DeleteDocsResponse(
+            deleted_count=deleted_count,
+            message=f"已从 {collection_name} 删除 {deleted_count} 个文档",
+        )
+
+    except Exception as e:
+        logger.exception("删除文档失败 | collection=%s | ids=%s", collection_name, ids)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_DELETE_FAILED,
+            detail=f"删除文档失败: {e}",
+        )
+
+
+async def clear_collection(collection_name: str) -> ClearCollectionResponse:
+    """清空指定集合的全部数据。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+
+        collection = await loop.run_in_executor(None, client.get_collection, collection_name)
+        total = await loop.run_in_executor(None, collection.count)
+
+        if total > 0:
+            all_ids = await loop.run_in_executor(None, lambda: collection.get(include=[])["ids"])
+            if all_ids:
+                await loop.run_in_executor(None, lambda: collection.delete(ids=all_ids))
+
+        logger.info("集合已清空 | collection=%s | deleted=%d", collection_name, total)
+
+        return ClearCollectionResponse(
+            deleted_count=total,
+            collection_name=collection_name,
+            message=f"集合 {collection_name} 已清空，共删除 {total} 条数据",
+        )
+
+    except Exception as e:
+        logger.exception("清空集合失败 | collection=%s", collection_name)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_DELETE_FAILED,
+            detail=f"清空集合失败: {e}",
+        )
+
+
+async def delete_collection(collection_name: str) -> DeleteCollectionResponse:
+    """删除整个集合。"""
+    try:
+        client = _get_chroma_client()
+        loop = asyncio.get_running_loop()
+
+        await loop.run_in_executor(None, lambda: client.delete_collection(name=collection_name))
+
+        # 如果删除的是当前 RAG 使用的集合，需要重置向量库单例
+        if collection_name == COLLECTION_NAME:
+            global _vectorstore
+            _vectorstore = None
+            logger.info("当前 RAG 集合已被删除，向量库单例已重置")
+
+        logger.info("集合已删除 | collection=%s", collection_name)
+
+        return DeleteCollectionResponse(
+            collection_name=collection_name,
+            message=f"集合 {collection_name} 已永久删除",
+        )
+
+    except Exception as e:
+        logger.exception("删除集合失败 | collection=%s", collection_name)
+        raise AppException(
+            status_code=500,
+            error_code=ErrorCode.RAG_DELETE_FAILED,
+            detail=f"删除集合失败: {e}",
+        )
 
 
 # ═══════════════════════════════════════════
