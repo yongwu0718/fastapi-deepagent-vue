@@ -3,20 +3,18 @@ import type { useRagManager } from '../composables/useRagManager'
 
 defineProps<{
   rag: ReturnType<typeof useRagManager>
-  deleteDocsInput: string
-  docsToDelete: string[]
+  deleteConfirmDocId: string | null
   showClearConfirm: boolean
   showDeleteColConfirm: boolean
 }>()
 
 defineEmits<{
-  (e: 'update:deleteDocsInput', v: string): void
   (e: 'selectCollection', name: string): void
   (e: 'refreshCollections'): void
-  (e: 'refreshStats'): void
   (e: 'pageChange', page: number): void
-  (e: 'deleteDocs'): void
   (e: 'deleteSingleDoc', id: string): void
+  (e: 'confirmDeleteSingleDoc'): void
+  (e: 'cancelDeleteSingleDoc'): void
   (e: 'clearCollection'): void
   (e: 'confirmClear'): void
   (e: 'cancelClear'): void
@@ -49,37 +47,6 @@ defineEmits<{
       </div>
     </div>
 
-    <!-- 统计面板 -->
-    <fieldset v-if="rag.selectedCollection.value" class="config-section">
-      <legend>
-        统计面板
-        <button class="action-btn secondary refresh-stats-btn" :disabled="rag.statsLoading.value" @click="$emit('refreshStats')">
-          {{ rag.statsLoading.value ? '统计中...' : '刷新统计' }}
-        </button>
-      </legend>
-      <div v-if="rag.statsLoading.value" class="config-loading">正在统计...</div>
-      <div v-else-if="rag.collectionStats.value" class="stats-grid">
-        <div class="stats-item"><span class="stats-label">总文档数</span><span class="stats-value">{{ rag.collectionStats.value.total_count.toLocaleString() }}</span></div>
-        <div class="stats-item"><span class="stats-label">采样文档数</span><span class="stats-value">{{ rag.collectionStats.value.sampled_count.toLocaleString() }}</span></div>
-        <div class="stats-item"><span class="stats-label">非空率</span><span class="stats-value">{{ rag.collectionStats.value.empty_rate }}</span></div>
-        <div class="stats-item"><span class="stats-label">平均长度</span><span class="stats-value">{{ rag.collectionStats.value.avg_doc_length.toFixed(0) }} 字符</span></div>
-        <div class="stats-item"><span class="stats-label">向量维度</span><span class="stats-value">{{ rag.collectionStats.value.vector_dimension ?? 'N/A' }}</span></div>
-        <div class="stats-item"><span class="stats-label">空文档数</span><span class="stats-value">{{ rag.collectionStats.value.empty_count }}</span></div>
-      </div>
-      <div v-if="rag.collectionStats.value?.metadata_coverage?.length" class="meta-coverage-section">
-        <h4 class="meta-title">元数据字段覆盖率</h4>
-        <table class="meta-table">
-          <thead><tr><th>字段名</th><th>出现次数</th><th>覆盖率</th></tr></thead>
-          <tbody>
-            <tr v-for="(item, mi) in rag.collectionStats.value.metadata_coverage" :key="mi">
-              <td><code>{{ item.field }}</code></td>
-              <td>{{ item.count }}</td>
-              <td>{{ item.coverage }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </fieldset>
 
     <!-- 文档列表 -->
     <fieldset v-if="rag.selectedCollection.value" class="config-section">
@@ -95,12 +62,18 @@ defineEmits<{
               <td class="docs-col-content"><div class="doc-content-preview">{{ doc.document?.slice(0, 300) ?? 'N/A' }}{{ (doc.document?.length ?? 0) > 300 ? '...' : '' }}</div></td>
               <td class="docs-col-meta">
                 <div v-if="doc.metadata && Object.keys(doc.metadata).length" class="meta-tags">
-                  <span v-for="(val, key) in doc.metadata" :key="key" class="meta-tag" :title="`${key}: ${val}`">{{ key }}</span>
+                  <span v-for="(val, key) in doc.metadata" :key="key" class="meta-tag">{{ key }}: {{ val }}</span>
                 </div>
                 <span v-else class="text-muted">—</span>
               </td>
               <td class="docs-col-action">
-                <button class="row-delete-btn" :disabled="rag.browseActionLoading.value" :title="`删除 ${doc.id}`" @click="$emit('deleteSingleDoc', doc.id)">✕</button>
+                <template v-if="deleteConfirmDocId === doc.id">
+                  <div class="row-confirm">
+                    <button class="row-confirm-btn danger" :disabled="rag.browseActionLoading.value" @click="$emit('confirmDeleteSingleDoc')">确认</button>
+                    <button class="row-confirm-btn cancel" :disabled="rag.browseActionLoading.value" @click="$emit('cancelDeleteSingleDoc')">取消</button>
+                  </div>
+                </template>
+                <button v-else class="row-delete-btn" :disabled="rag.browseActionLoading.value || !!deleteConfirmDocId" :title="`删除 ${doc.id}`" @click="$emit('deleteSingleDoc', doc.id)">✕</button>
               </td>
             </tr>
           </tbody>
@@ -119,18 +92,6 @@ defineEmits<{
     <!-- 操作 -->
     <fieldset v-if="rag.selectedCollection.value" class="config-section">
       <legend>操作</legend>
-      <div class="browse-action-group">
-        <h4 class="action-title">删除文档</h4>
-        <div class="form-group mb-sm">
-          <textarea class="form-textarea" rows="3" placeholder="输入要删除的文档 ID（每行一个，或以逗号分隔）" :disabled="rag.browseActionLoading.value" :value="deleteDocsInput" @input="$emit('update:deleteDocsInput', ($event.target as HTMLTextAreaElement).value)" />
-        </div>
-        <button class="action-btn danger" :disabled="rag.browseActionLoading.value || docsToDelete.length === 0" @click="$emit('deleteDocs')">
-          {{ rag.browseActionLoading.value ? '操作中...' : `删除 ${docsToDelete.length} 个文档` }}
-        </button>
-      </div>
-
-      <hr />
-
       <div class="browse-action-group">
         <h4 class="action-title danger-title">清空集合</h4>
         <p class="action-desc">删除集合中所有文档，集合结构保留</p>
@@ -197,18 +158,6 @@ defineEmits<{
 .action-btn.secondary:hover:not(:disabled) { background: #f1f5f9; }
 .action-btn.danger { background: #dc2626; color: #fff; }
 .action-btn.danger:hover:not(:disabled) { background: #b91c1c; }
-.refresh-stats-btn { margin-left: 12px; padding: 2px 10px !important; font-size: 11px !important; }
-/* 统计 */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-.stats-item { padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; flex-direction: column; gap: 4px; }
-.stats-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
-.stats-value { font-size: 18px; font-weight: 700; color: #1e293b; }
-.meta-coverage-section { margin-top: 8px; }
-.meta-title { font-size: 13px; color: #475569; margin: 12px 0 8px; }
-.meta-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.meta-table th { text-align: left; padding: 5px 8px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #64748b; font-weight: 500; }
-.meta-table td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-.meta-table code { font-family: 'JetBrains Mono','Fira Code','Consolas',monospace; font-size: 11px; }
 /* 文档表格 */
 .docs-table-wrap { overflow-x: auto; }
 .docs-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -225,6 +174,15 @@ defineEmits<{
 .row-delete-btn { width: 24px; height: 24px; border: none; border-radius: 4px; background: none; color: #94a3b8; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; }
 .row-delete-btn:hover:not(:disabled) { background: #fee2e2; color: #dc2626; }
 .row-delete-btn:disabled { opacity: .4; cursor: not-allowed; }
+.row-confirm { display: flex; gap: 4px; white-space: nowrap; }
+.row-confirm-btn {
+  padding: 2px 8px; border: 1px solid; border-radius: 4px; font-size: 11px; cursor: pointer; transition: all .15s;
+}
+.row-confirm-btn.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+.row-confirm-btn.danger:hover:not(:disabled) { background: #b91c1c; }
+.row-confirm-btn.cancel { background: #fff; color: #64748b; border-color: #cbd5e1; }
+.row-confirm-btn.cancel:hover:not(:disabled) { background: #f1f5f9; }
+.row-confirm-btn:disabled { opacity: .5; cursor: not-allowed; }
 .meta-tags { display: flex; flex-wrap: wrap; gap: 3px; }
 .meta-tag { display: inline-block; padding: 1px 6px; background: #eff6ff; color: #2563eb; border-radius: 3px; font-size: 10px; font-family: monospace; white-space: nowrap; }
 .text-muted { color: #cbd5e1; }

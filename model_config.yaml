@@ -1,6 +1,6 @@
 active_provider: deepseek
 deepseek:
-  model: deepseek-v4-flash
+  model: deepseek-v4-pro
   base_url: https://api.deepseek.com
   json_model: deepseek-v4-pro
   reasoning_effort: max

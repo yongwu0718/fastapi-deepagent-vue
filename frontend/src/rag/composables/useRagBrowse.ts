@@ -1,14 +1,8 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { useRagManager } from './useRagManager'
 
 export function useRagBrowse(rag: ReturnType<typeof useRagManager>) {
-  const deleteDocsInput = ref('')
-  const docsToDelete = computed(() =>
-    deleteDocsInput.value
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-  )
+  const deleteConfirmDocId = ref<string | null>(null)
   const showClearConfirm = ref(false)
   const showDeleteColConfirm = ref(false)
 
@@ -22,17 +16,19 @@ export function useRagBrowse(rag: ReturnType<typeof useRagManager>) {
     }
   }
 
-  function handleDeleteDocs() {
-    if (!rag.selectedCollection.value || !docsToDelete.value.length) return
-    rag.deleteDocsFromCollection(rag.selectedCollection.value, docsToDelete.value)
-    deleteDocsInput.value = ''
-    showClearConfirm.value = false
-    showDeleteColConfirm.value = false
-  }
-
   function handleDeleteSingleDoc(docId: string) {
     if (!rag.selectedCollection.value) return
-    rag.deleteDocsFromCollection(rag.selectedCollection.value, [docId])
+    deleteConfirmDocId.value = docId
+  }
+
+  function confirmDeleteSingleDoc() {
+    if (!rag.selectedCollection.value || !deleteConfirmDocId.value) return
+    rag.deleteDocsFromCollection(rag.selectedCollection.value, [deleteConfirmDocId.value])
+    deleteConfirmDocId.value = null
+  }
+
+  function cancelDeleteSingleDoc() {
+    deleteConfirmDocId.value = null
   }
 
   function handleClearCollection() {
@@ -58,14 +54,14 @@ export function useRagBrowse(rag: ReturnType<typeof useRagManager>) {
   }
 
   return {
-    deleteDocsInput,
-    docsToDelete,
+    deleteConfirmDocId,
     showClearConfirm,
     showDeleteColConfirm,
     handleBrowseCollectionChange,
     handleBrowsePageChange,
-    handleDeleteDocs,
     handleDeleteSingleDoc,
+    confirmDeleteSingleDoc,
+    cancelDeleteSingleDoc,
     handleClearCollection,
     confirmClearCollection,
     handleDeleteCollection,

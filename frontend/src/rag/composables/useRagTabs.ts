@@ -12,8 +12,13 @@ export function useRagTabs(rag: ReturnType<typeof useRagManager>) {
       // 触发配置加载（由 useRagConfig 注入 handleLoadConfig 后执行）
       onSwitchToConfig?.()
     }
-    if (key === 'browse' && !rag.collections.value && !rag.collectionsLoading.value) {
-      rag.fetchCollections()
+    if (key === 'browse') {
+      if (!rag.collections.value) {
+        await rag.fetchCollections()
+      }
+      if (!rag.selectedCollection.value && rag.collections.value?.collections?.length) {
+        rag.selectCollection(rag.collections.value.collections[0].name)
+      }
     }
   }
 

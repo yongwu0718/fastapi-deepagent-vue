@@ -39,9 +39,9 @@ const { activeTab, switchTab, registerConfigLoader } = useRagTabs(rag)
 registerConfigLoader(handleLoadConfig)
 
 const {
-  deleteDocsInput, docsToDelete, showClearConfirm, showDeleteColConfirm,
+  deleteConfirmDocId, showClearConfirm, showDeleteColConfirm,
   handleBrowseCollectionChange, handleBrowsePageChange,
-  handleDeleteDocs, handleDeleteSingleDoc,
+  handleDeleteSingleDoc, confirmDeleteSingleDoc, cancelDeleteSingleDoc,
   handleClearCollection, confirmClearCollection,
   handleDeleteCollection, confirmDeleteCollection,
 } = useRagBrowse(rag)
@@ -120,17 +120,15 @@ function goToSettings() { stopAutoRefresh(); router.push({ name: 'settings' }) }
         <BrowseTab
           v-if="activeTab === 'browse'"
           :rag="rag"
-          :delete-docs-input="deleteDocsInput"
-          :docs-to-delete="docsToDelete"
+          :delete-confirm-doc-id="deleteConfirmDocId"
           :show-clear-confirm="showClearConfirm"
           :show-delete-col-confirm="showDeleteColConfirm"
-          @update:delete-docs-input="deleteDocsInput = $event"
           @select-collection="handleBrowseCollectionChange"
           @refresh-collections="rag.fetchCollections()"
-          @refresh-stats="rag.fetchCollectionStats(rag.selectedCollection.value)"
           @page-change="handleBrowsePageChange"
-          @delete-docs="handleDeleteDocs()"
           @delete-single-doc="handleDeleteSingleDoc"
+          @confirm-delete-single-doc="confirmDeleteSingleDoc()"
+          @cancel-delete-single-doc="cancelDeleteSingleDoc()"
           @clear-collection="handleClearCollection()"
           @confirm-clear="confirmClearCollection()"
           @cancel-clear="showClearConfirm = false"

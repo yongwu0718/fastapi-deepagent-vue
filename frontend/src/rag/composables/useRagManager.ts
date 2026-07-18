@@ -277,10 +277,7 @@ export function useRagManager() {
   async function selectCollection(name: string) {
     selectedCollection.value = name
     browsePage.value = 1
-    await Promise.all([
-      fetchCollectionStats(name),
-      fetchDocuments(name, 1, browsePageSize.value),
-    ])
+    await fetchDocuments(name, 1, browsePageSize.value)
   }
 
   /** 删除集合中指定文档 */
