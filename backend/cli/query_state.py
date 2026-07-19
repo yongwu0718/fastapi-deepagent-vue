@@ -43,6 +43,6 @@ if __name__ == "__main__":
     setup_logging()
     logger.info("查询状态快照启动")
     asyncio.run(query_state(
-        thread_id="9f91ea1c-dbde-47ed-b348-3e18f2dd0a10",
+        thread_id="32f4ad2c-9b04-44b0-aa02-0b5c047b2139",
         # checkpoint_id="1f16a293-065d-614e-8003-7036fc1d4640"
     ))

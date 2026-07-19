@@ -164,3 +164,62 @@ export function normalizeContent(content: string | Array<{ [key: string]: unknow
 export function hasContentBlocksOnly(content: string | Array<{ [key: string]: unknown }> | undefined | null): boolean {
   return getContentText(content).length === 0 && getContentBlocks(content).length > 0
 }
+
+/**
+ * 合并连续的纯推理 assistant 消息。
+ *
+ * 如果多条连续的 assistant 消息都只有 reasonContent 而没有实际文本内容（content 为空且无 contentBlocks），
+ * 则将它们的推理内容合并为一条消息，避免历史列表中显示多条空消息。
+ *
+ * @param msgs - 原始消息数组
+ * @param skipToolMessages - 是否在处理时将 tool 角色消息视为透明（不中断连续推理链），
+ *   但 tool 消息仍保留在结果数组中。渲染层传 true，数据层传 false（默认）。
+ */
+export function mergeConsecutiveReasoningMessages(
+  msgs: Message[],
+  skipToolMessages = false,
+): Message[] {
+  if (!msgs || msgs.length === 0) return msgs
+
+  const result: Message[] = []
+  let pending: string[] = []
+
+  for (let i = 0; i < msgs.length; i++) {
+    const msg = msgs[i]
+    const isReasoningOnly =
+      msg.role === 'assistant' &&
+      !msg.content &&
+      !msg.contentBlocks?.length &&
+      !!msg.reasonContent
+    const isTool = msg.role === 'tool'
+
+    if (isReasoningOnly) {
+      pending.push(msg.reasonContent!)
+    } else if (skipToolMessages && isTool) {
+      // 渲染层：tool 消息不打断推理链，但仍保留在结果中（索引不变，由模板 v-if 隐藏）
+      result.push(msg)
+    } else {
+      // 刷新缓存的推理消息
+      if (pending.length > 0) {
+        result.push({
+          role: 'assistant',
+          content: '',
+          reasonContent: pending.join('\n\n---\n\n'),
+        })
+        pending = []
+      }
+      result.push(msg)
+    }
+  }
+
+  // 末尾的纯推理消息
+  if (pending.length > 0) {
+    result.push({
+      role: 'assistant',
+      content: '',
+      reasonContent: pending.join('\n\n---\n\n'),
+    })
+  }
+
+  return result
+}

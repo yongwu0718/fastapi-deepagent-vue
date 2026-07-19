@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
 import type { Message } from '@/api/chat'
+import { mergeConsecutiveReasoningMessages } from '@/api/chat'
 import { DO_NOT_RENDER_ID_PREFIX } from './useChatState'
 import ChatReason from './ChatReason.vue'
 import Markdown from '@/shared/Markdown.vue'
@@ -41,6 +42,14 @@ const emit = defineEmits<{
   switchBranch: [msgIndex: number, targetLeafCid: string]
 }>()
 
+/**
+ * 显示层合并：跳过 tool 消息（由右侧栏展示），将连续的纯推理 assistant 合并为一条。
+ * 合并后数组不含 tool 消息，不影响原始 messages 索引用于 retry/fork 等操作。
+ */
+const mergedMessages = computed(() =>
+  mergeConsecutiveReasoningMessages(props.messages as Message[], true),
+)
+
 /** fork 编辑草稿（本地状态，编辑过程中维护，避免每次按键都触发父级更新） */
 const editDraft = ref('')
 const editTextareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -51,7 +60,7 @@ function getBranchInfo(index: number): { branches: SiblingBranch[]; currentIndex
 
 /** 预计算每条消息的分支信息，避免模板中复杂调用 */
 const branchInfoByIndex = computed(() => {
-  return props.messages.map((_, i) => getBranchInfo(i))
+  return mergedMessages.value.map((_, i) => getBranchInfo(i))
 })
 
 /** 进入编辑态时，把父级传入的初始草稿同步到本地 ref，并自动聚焦 */
@@ -153,7 +162,7 @@ defineExpose({ scrollToBottom })
 
 watch(
   () => [
-    props.messages.length,
+    mergedMessages.value.length,
     props.streamingContent,
     props.streamingReasoning,
   ],
@@ -171,7 +180,7 @@ watch(
 <template>
   <div ref="listRef" class="chat-messages">
     <!-- 已完成的对话消息（过滤 DO_NOT_RENDER 前缀） -->
-    <template v-for="(msg, index) in messages" :key="msg._key ?? `${index}-${msg.role}`">
+    <template v-for="(msg, index) in mergedMessages" :key="msg._key ?? `${index}-${msg.role}`">
       <div
         v-if="(!msg.content?.startsWith(DO_NOT_RENDER_ID_PREFIX) || msg.contentBlocks?.length) && msg.role !== 'tool'"
         :id="`msg-nav-${index}`"

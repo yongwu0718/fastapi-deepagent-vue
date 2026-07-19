@@ -4,15 +4,18 @@ from typing import Any, Dict, List, Optional, Union, TypedDict
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from langchain.tools import tool
+from fastmcp import FastMCP
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 from backend.config.env_settings import COLLECTION_MEMORY_NAME, CHROMA_DB
-from backend.config.logger import get_logger
+from backend.config.logger import setup_logging, get_logger
 from backend.core.models.model_factory import embeddings
 
 logger = get_logger(__name__)
+
+mcp = FastMCP("Memory")
+
 
 # ------------------ 辅助函数：过滤复杂元数据 ------------------
 def filter_complex_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -40,16 +43,6 @@ def filter_complex_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
             except (TypeError, ValueError):
                 pass
     return clean
-
-
-# ------------------ 记忆条目结构 ------------------
-class MemoryEntry(TypedDict, total=False):
-    """记忆条目推荐结构（所有字段可选，便于扩展）"""
-    content: str                    # 核心记忆内容（自然语言描述）
-    category: Optional[str]      # 分类：如 "用户偏好"、"决策历史"、"事实"
-    timestamp: str               # ISO 格式时间戳
-    importance: float            # 0~1 重要性，用于日后优先级排序
-    metadata: Dict[str, Any]     # 其他扩展元数据（自由字典）
 
 
 # ------------------ 记忆向量存储封装 ------------------
@@ -92,26 +85,22 @@ class MemoryStore:
                          self.collection_name, e)
             raise RuntimeError(f"创建记忆向量存储失败: {e}")
 
-    # ---------- 核心 upsert 方法（合并 save 和 update） ----------
+    # ---------- 核心 upsert 方法 ----------
     async def upsert(self, memory_key: str, memory_value: Dict[str, Any]) -> None:
-        """插入或覆盖一条记忆（其他字段全部打包进 metadata JSON）。"""
+        """插入或覆盖一条记忆。"""
         logger.info("记忆 upsert | key=%s | 内容预览=%.100s...",
                      memory_key, json.dumps(memory_value, ensure_ascii=False))
 
-        # 提取自然语言内容
         content = memory_value.pop("content", "")
-
-        # 将所有剩余字段合并，并强制注入 key（方便反序列化时识别）
         packed = {
             "key": memory_key,
-            **memory_value,   # category, timestamp, importance, metadata 等
+            **memory_value,
         }
-        # 如果扩展的 metadata 是字典，这里会一起打包，Chroma 只需字符串
         metadata_json = json.dumps(packed, ensure_ascii=False)
 
         doc = Document(
             page_content=content,
-            metadata={"metadata": metadata_json},   # 唯一的元数据字段
+            metadata={"metadata": metadata_json},
             id=memory_key,
         )
 
@@ -144,7 +133,6 @@ class MemoryStore:
         for doc, score in docs_with_scores:
             if threshold is not None and score > threshold:
                 continue
-            # key 直接从文档 ID 获取，不再依赖 metadata
             key = doc.id or "unknown"
             results.append(f"[{key}] (距离:{score:.4f}) {doc.page_content}")
             if len(results) >= k:
@@ -185,16 +173,13 @@ class MemoryStore:
             logger.debug("记忆不存在 | key=%s", memory_key)
             return None
 
-        # 从打包的 JSON 字符串中还原所有字段
         packed_str = metadatas[0].get("metadata", "{}")
         try:
             packed = json.loads(packed_str) if isinstance(packed_str, str) else {}
         except json.JSONDecodeError:
             packed = {}
 
-        # 注入 content
         packed["content"] = documents[0]
-        # 如果扩展 metadata 字段本身也是字符串，可进一步解析（但它在打包时就是字典，所以一般无需再处理）
         if "metadata" in packed and isinstance(packed["metadata"], str):
             try:
                 packed["metadata"] = json.loads(packed["metadata"])
@@ -239,12 +224,9 @@ memory_store = MemoryStore(
 )
 
 
-# ------------------ 工具定义 ------------------
-@tool
-async def save_memory(
-    memory_key: str,
-    memory_value: Union[Dict[str, Any], str],  # 兼容字典和 JSON 字符串
-) -> str:
+# ------------------ MCP 工具定义 ------------------
+@mcp.tool()
+async def save_memory(memory_key: str, memory_value: str) -> str:
     """保存或更新一条结构化记忆（若 key 已存在则覆盖）。
 
     工具会自动处理以下字段：
@@ -252,23 +234,22 @@ async def save_memory(
 
     参数:
         memory_key: 记忆的唯一标识符。
-        memory_value: 可以是字典或 JSON 字符串，包含以下可选字段：
+        memory_value: JSON 字符串，包含以下可选字段：
             content (str):      核心记忆内容（自然语言描述）
             category (str):     分类，如 '用户偏好'、'决策历史'、'事实'
             importance (float): 0~1 重要性
             metadata (dict):    其他扩展元数据
     """
     try:
-        # 兼容 JSON 字符串输入
-        if isinstance(memory_value, str):
-            try:
-                memory_value = json.loads(memory_value)
-            except json.JSONDecodeError as e:
-                return f"❌ memory_value 不是合法的 JSON 字符串: {e}"
-        if not isinstance(memory_value, dict):
-            return "❌ memory_value 必须是一个字典或 JSON 对象"
+        # 解析 JSON 字符串输入
+        try:
+            parsed_value = json.loads(memory_value)
+        except json.JSONDecodeError as e:
+            return f"❌ memory_value 不是合法的 JSON 字符串: {e}"
+        if not isinstance(parsed_value, dict):
+            return "❌ memory_value 必须是一个 JSON 对象（字典）"
 
-        entry = dict(memory_value)
+        entry = dict(parsed_value)
         entry.setdefault(
             "timestamp",
             datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M")
@@ -283,14 +264,12 @@ async def save_memory(
         return f"❌ 保存记忆失败: {e}"
 
 
-@tool
-async def delete_memory(
-    memory_key: str,
-) -> str:
+@mcp.tool()
+async def delete_memory(memory_key: str) -> str:
     """删除指定 ID 的记忆。
-    
+
     Args:
-        memory_key (str): 要删除的记忆键
+        memory_key: 要删除的记忆键
     """
     try:
         await memory_store.delete(memory_key)
@@ -300,14 +279,12 @@ async def delete_memory(
         return f"❌ 删除记忆失败: {e}"
 
 
-@tool
-async def search_memory(
-    query: str,
-) -> str:
+@mcp.tool()
+async def search_memory(query: str) -> str:
     """搜索长期记忆库中的相关信息。
-    
+
     Args:
-        query (str): 搜索查询字符串
+        query: 搜索查询字符串
     """
     try:
         return await memory_store.search(query)
@@ -316,12 +293,12 @@ async def search_memory(
         return f"❌ 搜索记忆失败: {e}"
 
 
-@tool
+@mcp.tool()
 async def get_memory(memory_key: str) -> str:
     """精确获取指定 key 的记忆内容。
-    
+
     Args:
-        memory_key (str): 要获取的记忆键
+        memory_key: 要获取的记忆键
     """
     try:
         result = await memory_store.get(memory_key)
@@ -333,11 +310,9 @@ async def get_memory(memory_key: str) -> str:
         return f"❌ 获取记忆失败: {e}"
 
 
-@tool
+@mcp.tool()
 async def list_memory_keys() -> str:
-    """列出所有已保存的记忆 key（最多 1000 个）。
-    
-    """
+    """列出所有已保存的记忆 key（最多 1000 个）。"""
     try:
         keys = await memory_store.list_keys()
         if not keys:
@@ -346,3 +321,9 @@ async def list_memory_keys() -> str:
     except Exception as e:
         logger.error("工具 list_memory_keys 异常 | error=%s", e)
         return f"❌ 列出记忆 key 失败: {e}"
+
+
+if __name__ == "__main__":
+    setup_logging()
+    logger.info("Memory MCP Server 启动")
+    mcp.run(transport="stdio")

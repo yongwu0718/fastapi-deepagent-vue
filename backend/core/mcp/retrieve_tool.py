@@ -1,24 +1,21 @@
 import time
+import json
 import traceback
 from contextlib import contextmanager
-from typing import Optional, TypedDict
+from typing import Optional
 
+from fastmcp import FastMCP
 from langchain_chroma import Chroma
-from langchain.tools import tool
 
-from backend.config.logger import get_logger
+from backend.config.logger import setup_logging, get_logger
 from backend.core.models.model_factory import embeddings, rerank_model
 from backend.config.env_settings import CHROMA_DB, COLLECTION_NAME
 
 logger = get_logger(__name__)
 
-# 类型定义
-class RetrieveResult(TypedDict):
-    documents: list
-    question: str
-    error: Optional[str]
+mcp = FastMCP("Retrieval")
 
-# 向量存储 —— 直接在主函数外初始化
+# ---------- 向量存储 —— 模块级初始化 ----------
 logger.info("正在初始化 Chroma | collection=%s | path=%s", COLLECTION_NAME, CHROMA_DB)
 _t0 = time.monotonic()
 _vectorstore = Chroma(
@@ -28,7 +25,8 @@ _vectorstore = Chroma(
 )
 logger.info("Chroma 初始化完成 | 耗时=%.1fms", (time.monotonic() - _t0) * 1000)
 
-# 计时工具
+
+# ---------- 计时工具 ----------
 @contextmanager
 def _timed(label: str, *args):
     """上下文管理器：记录步骤耗时。"""
@@ -41,7 +39,8 @@ def _timed(label: str, *args):
         elapsed = (time.monotonic() - t0) * 1000
         logger.info("%s | 完成 | 耗时=%.1fms", msg, elapsed)
 
-# 日志格式化
+
+# ---------- 日志格式化 ----------
 def _log_results(reranked_docs: list) -> None:
     """输出最终结果摘要日志。"""
     if not reranked_docs:
@@ -55,23 +54,21 @@ def _log_results(reranked_docs: list) -> None:
         lines.append(f"【结果 {i + 1}】 (得分:{score}) {header_path} | {snippet}")
     logger.debug("检索并重排序后的结果：\n%s", "\n".join(lines))
 
-# 合并后的唯一检索方法
+
+# ---------- 检索管道 ----------
 def retrieve_with_rerank_text(
     question: str,
     rerank_threshold: float = 0.5,
     initial_k: int = 50,
-) -> RetrieveResult:
-    """检索管道：向量召回 → 重排序 → 分数过滤。
-
-    所有步骤都在本方法内完成，向量数据库已在外部初始化。
-    """
+) -> dict:
+    """检索管道：向量召回 → 重排序 → 分数过滤。"""
     overall_t0 = time.monotonic()
     logger.info(
         "========== 检索开始 ========== | question=%s | threshold=%.2f | k=%d",
         question, rerank_threshold, initial_k,
     )
 
-    def _empty_result(error_msg: Optional[str] = None) -> RetrieveResult:
+    def _empty_result(error_msg: Optional[str] = None) -> dict:
         return {"documents": [], "question": question, "error": error_msg}
 
     try:
@@ -126,26 +123,44 @@ def retrieve_with_rerank_text(
         # 日志 & 返回
         _log_results(reranked_docs)
 
+        # 将 Document 对象序列化为 JSON 兼容字典
+        serialized_docs = []
+        for doc in reranked_docs:
+            serialized_docs.append({
+                "content": doc.page_content,
+                "metadata": doc.metadata,
+            })
+
         overall_ms = (time.monotonic() - overall_t0) * 1000
         logger.info(
             "========== 检索结束 ========== | 返回=%d 篇 | 总耗时=%.1fms",
-            len(reranked_docs), overall_ms,
+            len(serialized_docs), overall_ms,
         )
 
-        return {"documents": reranked_docs, "question": question, "error": None}
+        return {"documents": serialized_docs, "question": question, "error": None}
 
     except Exception as e:
         logger.error("========== 检索异常 ========== | err=%s", e)
         logger.error("错误栈：\n%s", traceback.format_exc())
         return _empty_result(f"检索失败: {e}")
 
-# LangChain 工具封装
-@tool
-def retriever_row_doc_tool(question: str) -> dict:
+
+# ---------- MCP 工具 ----------
+@mcp.tool()
+def retriever_row_doc_tool(question: str) -> str:
     """检索向量数据库，检索原始文档段落，返回相关文档内容及元数据。
-    args:
-        question: 用户查询的问题必须是连续的自然语言句子，用于检索相关的文档段落。
-    return:
-        dict: 包含相关文档内容及元数据的字典。
+
+    Args:
+        question: 用户查询的问题，必须是连续的自然语言句子，用于检索相关的文档段落。
+
+    Returns:
+        JSON 字符串，包含相关文档内容及元数据。
     """
-    return retrieve_with_rerank_text(question)
+    result = retrieve_with_rerank_text(question)
+    return json.dumps(result, ensure_ascii=False)
+
+
+if __name__ == "__main__":
+    setup_logging()
+    logger.info("Retrieval MCP Server 启动")
+    mcp.run(transport="stdio")

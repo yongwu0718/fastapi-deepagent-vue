@@ -7,7 +7,7 @@ import {
 } from '@/api/client/sdk.gen'
 import type { ChatResponse } from '@/api/client/types.gen'
 import type { Message } from '@/api/chat'
-import { normalizeContent } from '@/api/chat'
+import { normalizeContent, mergeConsecutiveReasoningMessages } from '@/api/chat'
 
 export interface ChatThread {
   /** 线程标识，同时作为后端 API 的 thread_id (UUID) */
@@ -85,7 +85,7 @@ export async function loadThreadHistory(
         }
       })
       cacheThreadMessages(tid, msgs)
-      return msgs
+      return mergeConsecutiveReasoningMessages(msgs)
     }
   } catch {
     // 后端请求失败 → 回退到 localStorage 缓存

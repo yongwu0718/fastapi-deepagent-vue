@@ -3,6 +3,7 @@
 基于 **DeepAgents + LangGraph** 的深度智能体知识库检索系统，集成两阶段 RAG 检索、长期记忆、技能管理、人机交互审批（HITL）、Loop Engineering 条件驱动循环、检查点分支导航等能力，配备 Vue 3 流式对话前端。
 
 **注意：**
+
 mcp服务网站:
 魔搭平台:https://modelscope.cn/mcp
 阿里云百炼平台:https://bailian.console.aliyun.com/cn-beijing?tab=app#/mcp-market

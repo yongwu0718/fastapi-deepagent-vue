@@ -4,6 +4,16 @@
         "command": "{PYTHON_EXECUTABLE}",
         "args": ["{MCP_SERVER_DIR}\\local_mcp.py"]
     },
+    "memory": {
+        "transport": "stdio",
+        "command": "{PYTHON_EXECUTABLE}",
+        "args": ["{MCP_SERVER_DIR}\\memory_tool.py"]
+    },
+    "retrieval": {
+        "transport": "stdio",
+        "command": "{PYTHON_EXECUTABLE}",
+        "args": ["{MCP_SERVER_DIR}\\retrieve_tool.py"]
+    },
     "WebSearch": {
         "transport": "http",
         "url": "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp",

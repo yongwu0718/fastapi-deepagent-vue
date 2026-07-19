@@ -33,7 +33,10 @@ def _extract_text_blocks(content) -> list[str]:
 
 
 def message_to_response(msg) -> MessageResponse | None:
-    """将 LangChain 消息对象转为 MessageResponse，非聊天角色返回 None"""
+    """将 LangChain 消息对象转为 MessageResponse，非聊天角色返回 None
+
+    允许 assistant 消息仅包含推理内容而无需文本输出（模型可能只输出思考链但未生成文本）。
+    """
     role_map = {
         "human": "user",
         "ai": "assistant",
@@ -45,8 +48,18 @@ def message_to_response(msg) -> MessageResponse | None:
     if role not in _CHAT_ROLES:
         return None
 
+    # 先尝试提取 reasoning_content（思考过程），以便后续无文本块时回退
+    reason = None
+    if hasattr(msg, "additional_kwargs"):
+        reason = msg.additional_kwargs.get("reasoning_content")
+    if reason is None and hasattr(msg, "response_metadata"):
+        reason = msg.response_metadata.get("reasoning_content")
+
     blocks = _extract_text_blocks(msg.content)
     if not blocks:
+        # 没有文本内容，但有推理内容 → 保留为仅推理的 assistant 消息
+        if reason and role == "assistant":
+            return MessageResponse(role="assistant", content="", reason_content=reason)
         return None
 
     # 用户消息只取第一个文本块（用户实际提问），过滤附件内容避免撑满页面
@@ -56,13 +69,9 @@ def message_to_response(msg) -> MessageResponse | None:
         content = "\n".join(blocks)
 
     if not content:
+        # 合并后为空，但有推理内容 → 保留
+        if reason and role == "assistant":
+            return MessageResponse(role="assistant", content="", reason_content=reason)
         return None
-
-    # 尝试提取 reasoning_content（思考过程）
-    reason = None
-    if hasattr(msg, "additional_kwargs"):
-        reason = msg.additional_kwargs.get("reasoning_content")
-    if reason is None and hasattr(msg, "response_metadata"):
-        reason = msg.response_metadata.get("reasoning_content")
 
     return MessageResponse(role=role, content=content, reason_content=reason)

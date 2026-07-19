@@ -2,10 +2,7 @@
 from contextlib import asynccontextmanager
 # agent 配置
 from deepagents.graph import create_deep_agent
-from backend.core.utils import (
-    save_memory, delete_memory, search_memory, get_memory, list_memory_keys, mcp_tool, retriever_row_doc_tool,
-    save_bill, analyze_billing, analyze_monthly, analyze_expense, analyze_monthly_categories
-)
+from backend.core.mcp.mcp_tool import mcp_tool
 from backend.core.assembled.backends import backend
 from backend.core.assembled.middleware import add_middleware
 from backend.core.custom_middleware.model_switcher import ModelContext
@@ -52,9 +49,7 @@ async def init_graph():
     logger.info("正在初始化 Graph | checkpoint_db=%s | store_db=%s", CHECKPOINT_DB, STORE_DB)
     mcp_tools = await mcp_tool()
     subagents_config = await load_subagents()
-    tools_list = [save_memory, search_memory,delete_memory,get_memory,list_memory_keys, retriever_row_doc_tool, *mcp_tools,
-        save_bill,analyze_billing, analyze_monthly, analyze_expense, analyze_monthly_categories,
-        ]   
+    tools_list = [ *mcp_tools,]
 
 
     async with aiosqlite.connect(CHECKPOINT_DB, check_same_thread=False) as conn_sql_check:

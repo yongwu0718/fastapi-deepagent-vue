@@ -7,7 +7,7 @@ import { useToolMessages } from '@/chat/tools/useToolMessages'
 import type { ContentBlock } from '@/upload/useFileUpload'
 import { toast } from '@/shared/useToast'
 import { ensureMessageKey } from './useChatState'
-import { getContentText } from '@/api/chat'
+import { getContentText, mergeConsecutiveReasoningMessages } from '@/api/chat'
 import { loggerRetry, loggerFork, loggerCheckpoint } from '@/shared/useLogger'
 
 export interface ChatControllerCallbacks {
@@ -102,7 +102,7 @@ export function useChatController(
     loadThreadHistory(newId)
       .then(async (serverMsgs) => {
         if (serverMsgs.length > 0) {
-          messages.value = serverMsgs.map(ensureMessageKey)
+          messages.value = mergeConsecutiveReasoningMessages(serverMsgs.map(ensureMessageKey))
         } else {
           messages.value = [ensureMessageKey({ role: 'assistant', content: '你好！我是 AI 助手，有什么可以帮你的？' })]
         }
@@ -401,7 +401,7 @@ export function useChatController(
       loggerFork.info('switch branch', { leafCid: targetLeafCheckpointId.slice(-12) })
       const branchMsgs = await loadThreadHistory(threadId.value, targetLeafCheckpointId)
       if (branchMsgs.length > 0) {
-        messages.value = branchMsgs.map(ensureMessageKey)
+        messages.value = mergeConsecutiveReasoningMessages(branchMsgs.map(ensureMessageKey))
         // 加载后补全 _checkpointId / _parentCheckpointId
         try {
           await checkpoints.loadCheckpoints()
