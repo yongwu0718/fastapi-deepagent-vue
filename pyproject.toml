@@ -59,6 +59,7 @@ dependencies = [
     "llama-index-readers-file>=0.6.0",
     "pymupdf>=1.28.0",
     "Pillow>=11.0.0",
+    "diskcache>=5.6.3",
 ]
 
 [build-system]

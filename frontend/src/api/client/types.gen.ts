@@ -684,6 +684,26 @@ export type MoveRequest = {
 };
 
 /**
+ * RAGCollectionConfig
+ *
+ * 集合 / 存储配置。
+ */
+export type RagCollectionConfig = {
+    /**
+     * Name
+     *
+     * Chroma 集合名称
+     */
+    name?: string;
+    /**
+     * Persist Directory
+     *
+     * 向量库持久化目录
+     */
+    persist_directory?: string;
+};
+
+/**
  * RAGDeleteRequest
  *
  * 从向量库删除文档的请求。
@@ -856,6 +876,7 @@ export type RagPipelineSection = {
     splitter?: RagSplitterConfig;
     hnsw?: RaghnswConfig;
     processing?: RagProcessingConfig;
+    collection?: RagCollectionConfig;
 };
 
 /**

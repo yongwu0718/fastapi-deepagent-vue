@@ -27,6 +27,10 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
         preview_output_dir: '',
         enable_interactive: false,
       },
+      collection: {
+        name: '',
+        persist_directory: '',
+      },
     },
   })
 
@@ -37,6 +41,7 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
     const s = raw?.rag?.splitter ?? {}
     const h = raw?.rag?.hnsw ?? {}
     const p = raw?.rag?.processing ?? {}
+    const c = raw?.rag?.collection ?? {}
     configForm.value = {
       embedding: { model: e.model ?? '', base_url: e.base_url ?? '' },
       rag: {
@@ -62,6 +67,10 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
           preview_output_dir: p.preview_output_dir ?? '',
           enable_interactive: p.enable_interactive ?? false,
         },
+        collection: {
+          name: c.name ?? '',
+          persist_directory: c.persist_directory ?? '',
+        },
       },
     }
   }
@@ -81,6 +90,10 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
         processing: {
           preview_output_dir: configForm.value.rag.processing.preview_output_dir || undefined,
           enable_interactive: configForm.value.rag.processing.enable_interactive,
+        },
+        collection: {
+          name: configForm.value.rag.collection.name || undefined,
+          persist_directory: configForm.value.rag.collection.persist_directory || undefined,
         },
       },
     }

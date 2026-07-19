@@ -36,8 +36,37 @@ class MarkdownCleaner:
         Returns:
             清洗后的纯文本。
         """
-        text = re.sub(r'-\s*\d+\s*-', '', text)
+        # 1. 移除 HTML 标签（如 <Warning>, <Callout icon="."> 等）
+        text = re.sub(r'<[^>\n]+>', '', text)
+
+        # 2. 处理 Markdown 链接
+        if self.keep_link_text:
+            # 保留链接文本，移除 URL：[text](url) -> text
+            text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+        else:
+            # 完全移除链接（包括文本）
+            text = re.sub(r'\[[^\]]*\]\([^\)]+\)', '', text)
+
+        # 3. 处理图片（![alt](url)）→ 完全移除
+        #text = re.sub(r'!\[[^\]]*\]\([^\)]+\)', '', text)
+
+        # 4. 清理代码块开始标记：移除语言声明后面的所有多余字符（theme、} 等）
+        #    匹配行首可选空白 + 三个反引号 + 可选语言标识 + 任意非换行字符
+        text = re.sub(
+            r'^(\s*```)(\w*)[^\n]*',
+            r'\1\2',
+            text,
+            flags=re.MULTILINE
+        )
+
+        # 5. 移除代码块内的特殊注释（如 # [!code highlight], # [!code --], # [!code ++] 等）
+        text = re.sub(r'#\s*\[!code\s+.*?\]', '', text)
+
+        # 6. 移除 HTML 注释 <!-- . -->
+        text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
         
+        text = re.sub(r'¶', '', text)
+        text = re.sub(r'Python 3\.10\+', '', text)
         # 7. 压缩多余的空行
         if self.max_consecutive_newlines <= 0:
             pattern = r'\n\s*\n+'

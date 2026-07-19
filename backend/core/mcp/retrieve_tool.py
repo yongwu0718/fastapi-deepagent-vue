@@ -9,19 +9,19 @@ from langchain_chroma import Chroma
 
 from backend.config.logger import setup_logging, get_logger
 from backend.core.models.model_factory import embeddings, rerank_model
-from backend.config.env_settings import CHROMA_DB, COLLECTION_NAME
+from backend.api.markdown_rag.rag_setting import RAG_COLLECTION_NAME, RAG_PERSIST_DIR
 
 logger = get_logger(__name__)
 
 mcp = FastMCP("Retrieval")
 
 # ---------- 向量存储 —— 模块级初始化 ----------
-logger.info("正在初始化 Chroma | collection=%s | path=%s", COLLECTION_NAME, CHROMA_DB)
+logger.info("正在初始化 Chroma | collection=%s | path=%s", RAG_COLLECTION_NAME, RAG_PERSIST_DIR)
 _t0 = time.monotonic()
 _vectorstore = Chroma(
-    collection_name=COLLECTION_NAME,
+    collection_name=RAG_COLLECTION_NAME,
     embedding_function=embeddings,
-    persist_directory=CHROMA_DB,
+    persist_directory=RAG_PERSIST_DIR,
 )
 logger.info("Chroma 初始化完成 | 耗时=%.1fms", (time.monotonic() - _t0) * 1000)
 

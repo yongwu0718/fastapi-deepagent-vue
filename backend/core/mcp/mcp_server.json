@@ -22,18 +22,18 @@
         }
     },
     "lark-mcp": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@larksuiteoapi/lark-mcp",
-        "mcp",
-        "-a",
-        "{App_ID}",
-        "-s",
-        "{App_Secret}",
-        "-t",
-        "preset.calendar.default"
-      ]
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+            "-y",
+            "@larksuiteoapi/lark-mcp",
+            "mcp",
+            "-a",
+            "{App_ID}",
+            "-s",
+            "{App_Secret}",
+            "-t",
+            "preset.calendar.default"
+        ]
     }
 }

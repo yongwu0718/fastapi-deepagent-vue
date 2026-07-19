@@ -40,6 +40,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.workbuddy/
+
 # 数据库文件
 *.db
 *.db-journal

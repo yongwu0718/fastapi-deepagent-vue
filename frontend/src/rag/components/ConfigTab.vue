@@ -111,6 +111,19 @@ defineProps<{
           <input v-model="configForm.rag.processing.enable_interactive" type="checkbox" class="config-checkbox" />
         </div>
       </fieldset>
+
+      <!-- 集合 / 存储 -->
+      <fieldset class="config-section">
+        <legend>集合 / 存储</legend>
+        <div class="config-row">
+          <label class="config-label">集合名称 <span class="config-hint">Chroma 集合名称，修改后旧集合数据保留在磁盘</span></label>
+          <input v-model="configForm.rag.collection.name" class="form-input" type="text" placeholder="如 my_collection" />
+        </div>
+        <div class="config-row">
+          <label class="config-label">持久化目录 <span class="config-hint">向量库磁盘路径</span></label>
+          <input v-model="configForm.rag.collection.persist_directory" class="form-input" type="text" placeholder="如 ./chroma_db" />
+        </div>
+      </fieldset>
       <p v-if="configSaveMsg" class="config-save-msg">{{ configSaveMsg }}</p>
     </div>
   </div>

@@ -24,3 +24,6 @@ rag:
   processing:
     preview_output_dir: preview
     enable_interactive: true
+  collection:
+    name: docsment
+    persist_directory: data/save_db/chroma_db

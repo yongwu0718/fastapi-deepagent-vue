@@ -184,11 +184,24 @@ class RAGProcessingConfig(BaseModel):
     enable_interactive: bool = Field(default=True, description="CLI 模式下是否交互确认")
 
 
+class RAGCollectionConfig(BaseModel):
+    """集合 / 存储配置。"""
+    name: str = Field(
+        default="my_collection",
+        min_length=3,
+        max_length=63,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._-]*[a-zA-Z0-9]$",
+        description="Chroma 集合名称（3-63字符，字母/数字/._-，首尾须为字母或数字）",
+    )
+    persist_directory: str = Field(default="./chroma_db", description="向量库持久化目录")
+
+
 class RAGPipelineSection(BaseModel):
     """rag_config.yaml 中 rag 段的配置。"""
     splitter: RAGSplitterConfig = Field(default_factory=RAGSplitterConfig)
     hnsw: RAGHNSWConfig = Field(default_factory=RAGHNSWConfig)
     processing: RAGProcessingConfig = Field(default_factory=RAGProcessingConfig)
+    collection: RAGCollectionConfig = Field(default_factory=RAGCollectionConfig)
 
 
 class RAGFullConfigModel(BaseModel):

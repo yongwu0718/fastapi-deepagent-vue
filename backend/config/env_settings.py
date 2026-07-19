@@ -59,7 +59,6 @@ STORE_DB = _resolve(os.getenv("STORE_DB"))
 
 # Chroma 数据库
 CHROMA_DB = _resolve(os.getenv("CHROMA_DB"))
-COLLECTION_NAME = os.getenv("COLLECTION_NAME")
 COLLECTION_MEMORY_NAME = os.getenv("COLLECTION_MEMORY_NAME")
 
 # 运行相关路径

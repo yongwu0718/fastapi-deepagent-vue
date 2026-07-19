@@ -9,15 +9,8 @@ from fastapi import UploadFile
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from backend.config.env_settings import CHROMA_DB, COLLECTION_NAME
-from backend.rag_pipeline.markdown_rag.rag_setting import (
-    EMBEDDING_MODEL, EMBEDDING_BASE_URL,
-    RAG_SPLITTER_HEADERS, RAG_SPLITTER_RETURN_EACH_LINE, RAG_SPLITTER_STRIP_HEADERS,
-    RAG_PROCESSING_PREVIEW_DIR,
-    RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP, RAG_ENABLE_CHAR_SPLIT,
-    reload_rag_config,
-)
-from backend.rag_pipeline.markdown_rag.save_VectorStore import (
+from backend.api.markdown_rag import rag_setting as _rag
+from backend.api.markdown_rag.save_VectorStore import (
     MarkdownSplitter,
     VectorStoreCreator,
 )
@@ -56,13 +49,13 @@ def _get_vectorstore() -> Chroma:
     if _vectorstore is None:
         try:
             creator = VectorStoreCreator(
-                collection_name=COLLECTION_NAME,
-                persist_directory=CHROMA_DB,
-                model=EMBEDDING_MODEL,
-                base_url=EMBEDDING_BASE_URL,
+                collection_name=_rag.RAG_COLLECTION_NAME,
+                persist_directory=_rag.RAG_PERSIST_DIR,
+                model=_rag.EMBEDDING_MODEL,
+                base_url=_rag.EMBEDDING_BASE_URL,
             )
             _vectorstore = creator.vectorstore
-            logger.info("向量库已初始化 | collection=%s | dir=%s", COLLECTION_NAME, CHROMA_DB)
+            logger.info("向量库已初始化 | collection=%s | dir=%s", _rag.RAG_COLLECTION_NAME, _rag.RAG_PERSIST_DIR)
         except Exception as e:
             logger.exception("向量库初始化失败")
             raise AppException(
@@ -76,12 +69,12 @@ def _get_vectorstore() -> Chroma:
 def _build_split_config() -> SplitConfig:
     """构造当前分割配置（用于返回给前端）。"""
     return SplitConfig(
-        headers=list(RAG_SPLITTER_HEADERS),
-        return_each_line=RAG_SPLITTER_RETURN_EACH_LINE,
-        strip_headers=RAG_SPLITTER_STRIP_HEADERS,
-        enable_char_split=RAG_ENABLE_CHAR_SPLIT,
-        chunk_size=RAG_CHUNK_SIZE,
-        chunk_overlap=RAG_CHUNK_OVERLAP,
+        headers=list(_rag.RAG_SPLITTER_HEADERS),
+        return_each_line=_rag.RAG_SPLITTER_RETURN_EACH_LINE,
+        strip_headers=_rag.RAG_SPLITTER_STRIP_HEADERS,
+        enable_char_split=_rag.RAG_ENABLE_CHAR_SPLIT,
+        chunk_size=_rag.RAG_CHUNK_SIZE,
+        chunk_overlap=_rag.RAG_CHUNK_OVERLAP,
     )
 
 
@@ -93,7 +86,7 @@ def _extract_header_path(chunk: Document) -> Optional[str]:
     这里按层级拼接成 "# 概述 > ## 背景"。
     """
     path_parts: list[str] = []
-    for level in range(1, len(RAG_SPLITTER_HEADERS) + 1):
+    for level in range(1, len(_rag.RAG_SPLITTER_HEADERS) + 1):
         key = f"Header {level}"
         val = chunk.metadata.get(key)
         if val is not None:
@@ -117,7 +110,7 @@ def _build_chunk_details(chunks: list[Document]) -> list[ChunkDetail]:
             content_length=len(content),
             preview=content,
             header_path=header_path,
-            is_char_split=bool(RAG_ENABLE_CHAR_SPLIT and len(content) <= RAG_CHUNK_SIZE),
+            is_char_split=bool(_rag.RAG_ENABLE_CHAR_SPLIT and len(content) <= _rag.RAG_CHUNK_SIZE),
         ))
     return details
 
@@ -244,7 +237,7 @@ async def _process_batch(
         raise
 
     splitter = MarkdownSplitter()
-    output_preview_dir = preview_dir or RAG_PROCESSING_PREVIEW_DIR
+    output_preview_dir = preview_dir or _rag.RAG_PROCESSING_PREVIEW_DIR
     loop = asyncio.get_running_loop()
 
     for filename, md_text, file_size in items:
@@ -421,11 +414,11 @@ async def health_check() -> RAGHealthResponse:
         )
 
     return RAGHealthResponse(
-        collection_name=COLLECTION_NAME,
+        collection_name=_rag.RAG_COLLECTION_NAME,
         collection_count=collection_count,
-        persist_directory=CHROMA_DB,
-        embedding_model=EMBEDDING_MODEL,
-        embedding_base_url=EMBEDDING_BASE_URL,
+        persist_directory=_rag.RAG_PERSIST_DIR,
+        embedding_model=_rag.EMBEDDING_MODEL,
+        embedding_base_url=_rag.EMBEDDING_BASE_URL,
     )
 
 
@@ -443,8 +436,8 @@ def _get_chroma_client() -> ChromaClientAPI:
     """获取 chromadb.PersistentClient 直连实例（不经过 LangChain 封装）。"""
     global _chroma_client
     if _chroma_client is None:
-        _chroma_client = chromadb.PersistentClient(path=CHROMA_DB)
-        logger.info("ChromaDB 直连客户端已初始化 | dir=%s", CHROMA_DB)
+        _chroma_client = chromadb.PersistentClient(path=_rag.RAG_PERSIST_DIR)
+        logger.info("ChromaDB 直连客户端已初始化 | dir=%s", _rag.RAG_PERSIST_DIR)
     return _chroma_client
 
 
@@ -679,7 +672,7 @@ async def delete_collection(collection_name: str) -> DeleteCollectionResponse:
         await loop.run_in_executor(None, lambda: client.delete_collection(name=collection_name))
 
         # 如果删除的是当前 RAG 使用的集合，需要重置向量库单例
-        if collection_name == COLLECTION_NAME:
+        if collection_name == _rag.RAG_COLLECTION_NAME:
             global _vectorstore
             _vectorstore = None
             logger.info("当前 RAG 集合已被删除，向量库单例已重置")
@@ -704,28 +697,17 @@ async def delete_collection(collection_name: str) -> DeleteCollectionResponse:
 #  rag_config.yaml 配置管理
 # ═══════════════════════════════════════════
 
-# rag_config.yaml 位于 markdown_rag 包同级
-_RAG_CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
-_RAG_CONFIG_PATH = os.path.normpath(
-    os.path.join(_RAG_CONFIG_DIR, "..", "..", "rag_pipeline", "markdown_rag", "rag_config.yaml")
-)
-
-
 async def get_rag_config() -> dict[str, Any]:
-    """读取 rag_config.yaml 并返回解析后的字典。
+    """读取 rag_config.yaml 配置（复用 rag_setting 的缓存，避免重复读取文件）。
 
     Returns:
         完整的配置 dict，可直接反序列化为 RAGFullConfigModel。
     """
     try:
-        config_path = os.path.abspath(_RAG_CONFIG_PATH)
-        if not os.path.isfile(config_path):
-            raise FileNotFoundError(f"配置文件不存在: {config_path}")
-
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-
-        logger.info("RAG 配置读取成功 | path=%s", config_path)
+        config = _rag.get_raw_rag_config()
+        if not config:
+            raise FileNotFoundError("RAG 配置为空，请检查 rag_config.yaml 和首次加载")
+        logger.info("RAG 配置读取成功")
         return config
 
     except FileNotFoundError as e:
@@ -733,13 +715,6 @@ async def get_rag_config() -> dict[str, Any]:
             status_code=404,
             error_code=ErrorCode.RAG_FILE_NOT_FOUND,
             detail=str(e),
-        )
-    except yaml.YAMLError as e:
-        logger.exception("RAG 配置 YAML 解析失败")
-        raise AppException(
-            status_code=500,
-            error_code=ErrorCode.INTERNAL_ERROR,
-            detail=f"配置文件 YAML 格式错误: {e}",
         )
     except AppException:
         raise
@@ -762,14 +737,19 @@ async def update_rag_config(config: RAGFullConfigModel) -> dict[str, Any]:
         {"status": "ok", "message": "..."}
     """
     try:
-        config_path = os.path.abspath(_RAG_CONFIG_PATH)
+        config_path = _rag.get_rag_config_path()
         config_dir = os.path.dirname(config_path)
 
         # 确保目录存在
         os.makedirs(config_dir, exist_ok=True)
 
-        # Pydantic model → dict（自动过滤默认值，保留用户显式设置的字段）
+        # Pydantic model → dict（自动过滤 None 值）
         config_dict = config.model_dump(exclude_none=True)
+        logger.info(
+            "即将写入 YAML | collection=%s | persist=%s",
+            config_dict.get("rag", {}).get("collection", {}).get("name", "N/A"),
+            config_dict.get("rag", {}).get("collection", {}).get("persist_directory", "N/A"),
+        )
 
         # 写入 YAML（保持可读性）
         yaml_content = yaml.dump(
@@ -783,9 +763,19 @@ async def update_rag_config(config: RAGFullConfigModel) -> dict[str, Any]:
 
         logger.info("RAG 配置文件写入成功 | path=%s | size=%d", config_path, len(yaml_content))
 
-        # 重载运行时配置变量
-        reload_rag_config()
+        # 重载运行时配置变量（先记下旧集合名，用于判断是否需要重置单例）
+        old_collection = _rag.RAG_COLLECTION_NAME
+        _rag.reload_rag_config()
         logger.info("RAG 运行时配置已重载")
+
+        # 集合名称变了 → 重置向量库单例，下次自动连接新集合（旧集合数据不动）
+        if _rag.RAG_COLLECTION_NAME != old_collection:
+            global _vectorstore
+            _vectorstore = None
+            logger.info(
+                "集合名称变更，向量库单例已重置 | old=%s | new=%s",
+                old_collection, _rag.RAG_COLLECTION_NAME,
+            )
 
         return {
             "status": "ok",
