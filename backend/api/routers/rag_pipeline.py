@@ -56,8 +56,7 @@ async def process_rag_endpoint(body: RAGProcessRequest):
         preview_only=body.preview_only,
     )
 
-
-# ════════════════ 处理 / 入库（上传模式） ════════════════
+# ════════════════ 处理 / 入库（上传模式） ═══════════════
 @router.post("/process/upload", response_model=RAGProcessResponse)
 @handle_endpoint_errors(
     ErrorCode.RAG_PROCESS_FAILED,
@@ -72,7 +71,6 @@ async def process_upload_endpoint(
     logger.info("POST /api/rag/process/upload | files=%d | preview_only=%s", len(files), preview_only)
     return await process_uploaded_files(files=files, preview_only=preview_only)
 
-
 # ════════════════ 删除 ════════════════
 @router.post("/delete", response_model=RAGDeleteResponse)
 @handle_endpoint_errors(
@@ -84,7 +82,6 @@ async def delete_rag_endpoint(body: RAGDeleteRequest):
     """按 ID 从向量库中删除文档。"""
     logger.info("POST /api/rag/delete | ids=%d", len(body.ids))
     return await delete_documents(ids=body.ids)
-
 
 # ════════════════ 健康检查 ════════════════
 @router.get("/health", response_model=RAGHealthResponse)
@@ -98,7 +95,6 @@ async def health_rag_endpoint():
     logger.info("GET /api/rag/health")
     return await health_check()
 
-
 # ════════════════ 配置管理 ════════════════
 @router.get("/config")
 @handle_endpoint_errors(
@@ -111,7 +107,6 @@ async def get_rag_config_endpoint():
     logger.info("GET /api/rag/config")
     return await get_rag_config()
 
-
 @router.put("/config")
 @handle_endpoint_errors(
     ErrorCode.INTERNAL_ERROR,
@@ -123,11 +118,9 @@ async def update_rag_config_endpoint(body: RAGFullConfigModel):
     logger.info("PUT /api/rag/config")
     return await update_rag_config(body)
 
-
 # ═══════════════════════════════════════════
 #  ChromaDB 数据浏览端点
 # ═══════════════════════════════════════════
-
 @router.get("/collections", response_model=CollectionListResponse)
 @handle_endpoint_errors(
     ErrorCode.RAG_VECTORSTORE_ERROR,
@@ -138,7 +131,6 @@ async def list_collections_endpoint():
     """列出 ChromaDB 中所有集合。"""
     logger.info("GET /api/rag/collections")
     return await list_collections()
-
 
 @router.get("/collection/{collection_name}/stats", response_model=CollectionStatsResponse)
 @handle_endpoint_errors(

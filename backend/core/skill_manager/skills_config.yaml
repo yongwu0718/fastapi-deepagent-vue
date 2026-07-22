@@ -2,6 +2,6 @@ enabled:
 - billing_analyze
 - gonghao-baowen-writing
 - subagents
+- sunzi-bingfa
 - task-planner
 - vocab-tutor
-- vue-best-practices

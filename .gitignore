@@ -73,7 +73,7 @@ knowledge-base/billing/
 .trae/
 data/save_run_file/
 .langgraph_api/
-my_tools/
+my-tools/
 
 # 模型文件（过大，不上传 Git）
 backend/rag_pipeline/models/

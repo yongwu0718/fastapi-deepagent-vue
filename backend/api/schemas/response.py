@@ -10,12 +10,14 @@ class MessageResponse(BaseModel):
     role: str
     content: Union[str, List[dict]] = ""
     reason_content: Optional[str] = None
+    id: Optional[str] = Field(default=None, description="LangChain 消息唯一 ID，用于前端绑定检查点")
     model_config = ConfigDict(exclude_none=True)
 
 
 class ChatResponse(BaseModel):
     """聊天响应"""
     messages: List[MessageResponse]
+    head_checkpoint_id: Optional[str] = Field(default=None, description="当前分支头检查点 ID，用于前端刷新后恢复 _leafCheckpointId")
 
 
 class StreamResponse(BaseModel):

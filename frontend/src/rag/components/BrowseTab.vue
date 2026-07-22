@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import type { useRagManager } from '../composables/useRagManager'
 
-defineProps<{
+const props = defineProps<{
   rag: ReturnType<typeof useRagManager>
   deleteConfirmDocId: string | null
   showClearConfirm: boolean
@@ -22,6 +23,25 @@ defineEmits<{
   (e: 'confirmDeleteCol'): void
   (e: 'cancelDeleteCol'): void
 }>()
+
+const expandedDocIds = ref<Set<string>>(new Set())
+
+function toggleExpand(docId: string) {
+  const ids = expandedDocIds.value
+  if (ids.has(docId)) {
+    ids.delete(docId)
+  } else {
+    ids.add(docId)
+  }
+  // 触发响应式更新
+  expandedDocIds.value = new Set(ids)
+}
+
+// 切换集合/翻页时自动收起
+watch(
+  () => [props.rag.selectedCollection.value, props.rag.browsePage.value],
+  () => { expandedDocIds.value = new Set() }
+)
 </script>
 
 <template>
@@ -54,28 +74,42 @@ defineEmits<{
       <div v-if="rag.docsLoading.value" class="config-loading">正在加载...</div>
       <div v-else-if="rag.documents.value?.documents?.length" class="docs-table-wrap">
         <table class="docs-table">
-          <thead><tr><th class="docs-col-idx">#</th><th class="docs-col-id">文档 ID</th><th class="docs-col-content">内容预览</th><th class="docs-col-meta">元数据</th><th class="docs-col-action">操作</th></tr></thead>
+          <thead><tr><th class="docs-col-expand"></th><th class="docs-col-idx">#</th><th class="docs-col-id">文档 ID</th><th class="docs-col-content">内容预览</th><th class="docs-col-meta">元数据</th><th class="docs-col-action">操作</th></tr></thead>
           <tbody>
-            <tr v-for="(doc, idx) in rag.documents.value.documents" :key="doc.id">
-              <td class="docs-col-idx">{{ (rag.browsePage.value - 1) * rag.browsePageSize.value + idx + 1 }}</td>
-              <td class="docs-col-id"><code>{{ doc.id }}</code></td>
-              <td class="docs-col-content"><div class="doc-content-preview">{{ doc.document?.slice(0, 300) ?? 'N/A' }}{{ (doc.document?.length ?? 0) > 300 ? '...' : '' }}</div></td>
-              <td class="docs-col-meta">
-                <div v-if="doc.metadata && Object.keys(doc.metadata).length" class="meta-tags">
-                  <span v-for="(val, key) in doc.metadata" :key="key" class="meta-tag">{{ key }}: {{ val }}</span>
-                </div>
-                <span v-else class="text-muted">—</span>
-              </td>
-              <td class="docs-col-action">
-                <template v-if="deleteConfirmDocId === doc.id">
-                  <div class="row-confirm">
-                    <button class="row-confirm-btn danger" :disabled="rag.browseActionLoading.value" @click="$emit('confirmDeleteSingleDoc')">确认</button>
-                    <button class="row-confirm-btn cancel" :disabled="rag.browseActionLoading.value" @click="$emit('cancelDeleteSingleDoc')">取消</button>
-                  </div>
-                </template>
-                <button v-else class="row-delete-btn" :disabled="rag.browseActionLoading.value || !!deleteConfirmDocId" :title="`删除 ${doc.id}`" @click="$emit('deleteSingleDoc', doc.id)">✕</button>
-              </td>
-            </tr>
+            <template v-for="(doc, idx) in rag.documents.value.documents" :key="doc.id">
+              <tr>
+                <td class="docs-col-expand">
+                  <button
+                    class="expand-toggle"
+                    :class="{ 'is-expanded': expandedDocIds.has(doc.id) }"
+                    @click="toggleExpand(doc.id)"
+                  >&#9654;</button>
+                </td>
+                <td class="docs-col-idx">{{ (rag.browsePage.value - 1) * rag.browsePageSize.value + idx + 1 }}</td>
+                <td class="docs-col-id"><code>{{ doc.id }}</code></td>
+                <td class="docs-col-content">
+                  <div class="doc-content-preview">{{ doc.document?.slice(0, 300) ?? 'N/A' }}{{ (doc.document?.length ?? 0) > 300 ? '...' : '' }}</div>
+                </td>
+                <td class="docs-col-meta">
+                  <code v-if="doc.metadata && Object.keys(doc.metadata).length" class="meta-json">{{ JSON.stringify(doc.metadata, null, 2) }}</code>
+                  <span v-else class="text-muted">—</span>
+                </td>
+                <td class="docs-col-action">
+                  <template v-if="deleteConfirmDocId === doc.id">
+                    <div class="row-confirm">
+                      <button class="row-confirm-btn danger" :disabled="rag.browseActionLoading.value" @click="$emit('confirmDeleteSingleDoc')">确认</button>
+                      <button class="row-confirm-btn cancel" :disabled="rag.browseActionLoading.value" @click="$emit('cancelDeleteSingleDoc')">取消</button>
+                    </div>
+                  </template>
+                  <button v-else class="row-delete-btn" :disabled="rag.browseActionLoading.value || !!deleteConfirmDocId" :title="`删除 ${doc.id}`" @click="$emit('deleteSingleDoc', doc.id)">✕</button>
+                </td>
+              </tr>
+              <tr v-if="expandedDocIds.has(doc.id)" class="expand-row">
+                <td colspan="6">
+                  <div class="expand-row-content">{{ doc.document }}</div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
         <div class="pagination">
@@ -169,7 +203,22 @@ defineEmits<{
 .docs-col-id code { font-family: 'JetBrains Mono','Fira Code','Consolas',monospace; font-size: 10px; word-break: break-all; }
 .docs-col-content { min-width: 200px; }
 .doc-content-preview { max-width: 400px; max-height: 60px; overflow-y: auto; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-all; line-height: 1.4; }
-.docs-col-meta { max-width: 180px; }
+/* 展开按钮 */
+.docs-col-expand { width: 24px; text-align: center; padding: 5px 0 !important; }
+.expand-toggle {
+  width: 18px; height: 18px; border: none; border-radius: 3px; background: none; color: #94a3b8;
+  font-size: 9px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .15s, color .15s; padding: 0; line-height: 1;
+}
+.expand-toggle:hover { color: #2563eb; background: #eff6ff; }
+.expand-toggle.is-expanded { transform: rotate(90deg); color: #2563eb; }
+/* 展开行 */
+.expand-row td { padding: 0 !important; border-bottom: 2px solid #e2e8f0; background: #f8fafc; }
+.expand-row-content {
+  padding: 10px 14px; font-size: 12px; color: #334155; white-space: pre-wrap; word-break: break-all;
+  line-height: 1.6; max-height: 360px; overflow-y: auto;
+}
+.docs-col-meta { max-width: 220px; }
 .docs-col-action { width: 36px; text-align: center; }
 .row-delete-btn { width: 24px; height: 24px; border: none; border-radius: 4px; background: none; color: #94a3b8; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all .15s; }
 .row-delete-btn:hover:not(:disabled) { background: #fee2e2; color: #dc2626; }
@@ -183,8 +232,7 @@ defineEmits<{
 .row-confirm-btn.cancel { background: #fff; color: #64748b; border-color: #cbd5e1; }
 .row-confirm-btn.cancel:hover:not(:disabled) { background: #f1f5f9; }
 .row-confirm-btn:disabled { opacity: .5; cursor: not-allowed; }
-.meta-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-.meta-tag { display: inline-block; padding: 1px 6px; background: #eff6ff; color: #2563eb; border-radius: 3px; font-size: 10px; font-family: monospace; white-space: nowrap; }
+.meta-json { display: block; font-family: 'JetBrains Mono','Fira Code','Consolas',monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-all; max-height: 80px; overflow-y: auto; line-height: 1.4; }
 .text-muted { color: #cbd5e1; }
 .pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 4px; }
 .page-info { font-size: 12px; color: #64748b; }

@@ -8,14 +8,13 @@ from fastmcp import FastMCP
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from backend.config.env_settings import COLLECTION_MEMORY_NAME, CHROMA_DB
+from backend.api.markdown_rag.rag_setting import RAG_PERSIST_DIR,RAG_MEMORY_NAME
 from backend.config.logger import setup_logging, get_logger
 from backend.core.models.model_factory import embeddings
 
 logger = get_logger(__name__)
 
 mcp = FastMCP("Memory")
-
 
 # ------------------ 辅助函数：过滤复杂元数据 ------------------
 def filter_complex_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -51,8 +50,8 @@ class MemoryStore:
 
     def __init__(
         self,
-        collection_name: str = "memory",
-        persist_directory: str = CHROMA_DB,
+        collection_name: str = RAG_MEMORY_NAME,
+        persist_directory: str = RAG_PERSIST_DIR,
     ):
         self.collection_name = collection_name
         self.persist_directory = persist_directory
@@ -219,8 +218,8 @@ class MemoryStore:
 
 # ------------------ 全局单例 ------------------
 memory_store = MemoryStore(
-    collection_name=COLLECTION_MEMORY_NAME,
-    persist_directory=CHROMA_DB,
+    collection_name=RAG_MEMORY_NAME,
+    persist_directory=RAG_PERSIST_DIR,
 )
 
 

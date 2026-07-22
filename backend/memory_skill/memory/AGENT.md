@@ -3,6 +3,9 @@
 agent.md位于"/memory/agent.md"
 
 **使用markdown表格进行输出表示时，长的单元格内容，使用<br>换行符**
+
+**所有tool的调用上限为3次，不要进行重复尝试，告知用户调用失败**
+
 ## 用户偏好
 - 用户希望看到推理过程，不只是最终结论。
 - **思维链（thinking 标签）要展开**，展示真实的内部思考：
@@ -13,6 +16,51 @@ agent.md位于"/memory/agent.md"
   - 结果不理想时的反思
 - thinking 不是"给自己看的笔记"，而是用户想看到的**推理过程展示**。
 - 简洁不等于只给结论。分析、对比、建议类问题更要展开推理链。
+
+## execute 工具调用规则
+
+### 合并原则（关键，已重复犯错）
+- **SKILL 中多个无依赖的 CLI 命令必须合并为一次 `execute` 调用**，用 `&&` 串联。
+- 典型错误：账单分析时把 `analyze billing`、`analyze expense`、`analyze monthly`、`analyze monthly-categories` 拆成 4 次独立 `execute`。正确做法：
+  ```bash
+  cd F:\index_rag\backend\memory_skill\skill\scripts\billing && python cli.py analyze billing && python cli.py analyze expense && python cli.py analyze monthly && python cli.py analyze monthly-categories
+  ```
+- 判断标准：这些命令之间没有数据依赖（后一个不依赖前一个的输出），就可以并行/串联合并。
+- 反过来，如果命令 B 需要命令 A 的输出作为参数，则必须分开调用。
+- **execute 调用上限同样受 tool 调用上限（3 次）约束**，合并是为了遵守规则，不是为了省事。
+
+## Memory 工具调用规则
+
+### save_memory
+- **何时调用**：用户明确说"保存/记住/记录下来"；或对话中自然暴露了高价值事实（如项目路径、偏好、决策结论），主动保存。
+- **key 命名**：英文 snake_case，语义明确（如 `user_project_path`、`billing_monthly_budget`），不取无意义 key。
+- **value 字段**：
+  - `content`：自然语言描述核心事实，一句话说清楚。
+  - `category`：从「用户偏好」「决策历史」「事实」「规则性学习」中选。
+  - `importance`：按下方打分表赋值。
+  - `metadata`：补充结构化字段（如 `{"path": "...", "date": "2026-01"}`），可选。
+- **覆盖规则**：相同 key 再次调用会覆盖旧值——适用于信息更新（如预算调整），不新建重复 key。
+- **不应保存**：临时状态（"我今天下午不在线"）、一次性任务请求、闲聊确认、凭证类敏感信息。
+
+### get_memory
+- **何时调用**：已知精确 key 时直接获取，一次调用拿到完整内容。
+- 不要用 `search_memory` 替代——已知 key 却用搜索是多此一举。
+
+### search_memory
+- **何时调用**：不确定 key、想发现某话题下有哪些已保存记忆时使用。输入自然语言查询，返回语义匹配结果。
+- 典型场景：用户说"之前聊过的那个预算方案"——用关键词搜出候选 key，再 `get_memory` 取内容。
+
+### delete_memory
+- **何时调用**：用户明确要求删除某条记忆；或发现已保存信息过时/错误，主动建议删除。
+- **执行前确认**：删除不可恢复，若主动发起应先告知用户待删除内容，获得确认后再执行。
+
+### 工具选择决策树
+```
+知道 key → get_memory
+不确定 key → search_memory → 找到 key → get_memory
+需要持久化事实 → save_memory
+信息过时/错误 → delete_memory（需确认）
+```
 
 ## 记忆重要性打分规则
 

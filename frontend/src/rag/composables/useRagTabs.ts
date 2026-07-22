@@ -13,9 +13,7 @@ export function useRagTabs(rag: ReturnType<typeof useRagManager>) {
       onSwitchToConfig?.()
     }
     if (key === 'browse') {
-      if (!rag.collections.value) {
-        await rag.fetchCollections()
-      }
+      await rag.fetchCollections()
       if (!rag.selectedCollection.value && rag.collections.value?.collections?.length) {
         rag.selectCollection(rag.collections.value.collections[0].name)
       }

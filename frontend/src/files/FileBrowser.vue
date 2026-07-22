@@ -12,6 +12,16 @@ import SplitFileView from './layout/SplitFileView.vue'
 
 const fm = getFileManager()
 
+// ── 内容宽度滑块（百分比） ──
+const MIN_CONTENT_WIDTH_PCT = 50
+const MAX_CONTENT_WIDTH_PCT = 100
+const contentWidthPct = ref(80)
+
+function onSliderInput(e: Event) {
+  const target = e.target as HTMLInputElement
+  contentWidthPct.value = Number(target.value)
+}
+
 // ── 搜索 ──
 const searchText = ref('')
 
@@ -204,6 +214,19 @@ function onBreadcrumbDragStart(e: DragEvent, path: string) {
         </span>
       </div>
       <div class="fb-header-right">
+        <!-- 宽度滑块 -->
+        <div class="fb-width-slider" title="调整内容宽度">
+          <svg class="fb-width-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 3H3v18h18z"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+          <input
+            type="range"
+            class="fb-width-input"
+            :min="MIN_CONTENT_WIDTH_PCT"
+            :max="MAX_CONTENT_WIDTH_PCT"
+            :value="contentWidthPct"
+            @input="onSliderInput"
+          />
+          <span class="fb-width-val">{{ contentWidthPct }}%</span>
+        </div>
         <template v-if="fm.activeTab.value">
           <template v-if="isMarkdown && isTextEditable && isText">
             <button v-if="isEditing" class="fb-btn" @click="onPreviewToggleEdit">预览</button>
@@ -244,6 +267,8 @@ function onBreadcrumbDragStart(e: DragEvent, path: string) {
       </div>
     </div>
 
+    <!-- ==================== 内容区域（受宽度滑块控制） ==================== -->
+    <div class="fb-body" :style="{ maxWidth: contentWidthPct + '%' }">
     <!-- ==================== 单屏模式 ==================== -->
     <template v-if="!fm.splitMode.value">
       <div v-if="fm.openTabs.value.length > 0" class="fb-tabs">
@@ -308,6 +333,9 @@ function onBreadcrumbDragStart(e: DragEvent, path: string) {
       @rename="onRename"
       @delete="onDelete"
     />
+
+    </div>
+    <!-- /.fb-body -->
 
     <!-- 对话框 -->
     <FileCreateDialog
@@ -391,6 +419,65 @@ function onBreadcrumbDragStart(e: DragEvent, path: string) {
   flex-shrink: 0;
 }
 
+/* ── 宽度滑块 ── */
+.fb-width-slider {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+  padding: 0 4px;
+  border-right: 1px solid var(--border-subtle, #f0edf3);
+}
+
+.fb-width-icon {
+  flex-shrink: 0;
+  color: var(--text-m, #9b8eaa);
+}
+
+.fb-width-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border, #e5e4e7);
+  outline: none;
+  cursor: pointer;
+}
+
+.fb-width-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent, #aa3bff);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.fb-width-input::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.fb-width-input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent, #aa3bff);
+  cursor: pointer;
+}
+
+.fb-width-val {
+  font-size: 10px;
+  color: var(--text-m, #9b8eaa);
+  min-width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── 标签栏容器 ── */
 .fb-tabs {
   display: flex;
@@ -426,6 +513,18 @@ function onBreadcrumbDragStart(e: DragEvent, path: string) {
 .fb-tabs-outline-btn.active {
   color: var(--accent, #aa3bff);
   border-color: var(--accent, #aa3bff);
+}
+
+/* ── 内容区域（受宽度滑块控制） ── */
+.fb-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0 auto;
+  width: 100%;
+  transition: max-width 0.2s ease;
 }
 
 /* ── 内容区域 ── */

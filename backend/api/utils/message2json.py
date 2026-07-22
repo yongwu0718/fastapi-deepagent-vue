@@ -74,4 +74,4 @@ def message_to_response(msg) -> MessageResponse | None:
             return MessageResponse(role="assistant", content="", reason_content=reason)
         return None
 
-    return MessageResponse(role=role, content=content, reason_content=reason)
+    return MessageResponse(role=role, content=content, reason_content=reason, id=getattr(msg, "id", None))

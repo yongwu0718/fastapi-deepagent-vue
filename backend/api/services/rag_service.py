@@ -777,6 +777,11 @@ async def update_rag_config(config: RAGFullConfigModel) -> dict[str, Any]:
                 old_collection, _rag.RAG_COLLECTION_NAME,
             )
 
+        # 重置 ChromaDB 直连客户端，确保下次使用最新 persist_directory
+        global _chroma_client
+        _chroma_client = None
+        logger.info("ChromaDB 直连客户端已重置")
+
         return {
             "status": "ok",
             "message": "RAG 配置已更新并生效",

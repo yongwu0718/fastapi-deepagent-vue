@@ -210,50 +210,69 @@ def _cleanup_expired_run_logs(ttl_days: int) -> None:
     """清理超过 TTL 的 run 启动日志（一次启动可以产生多个 run 文件）。
 
     扫描范围：
-        - ``LOG_ROOT`` 根目录下的 ``run_*.log``（兼容历史平铺布局）。
+        - ``LOG_ROOT`` 根目录下的 ``run_*.log``（兼容历史平铺布局，使用 mtime 兜底）。
         - 各日期子目录 ``LOG_ROOT/<YYYY-MM-DD>/`` 下的 ``run_*.log``。
 
-    判定依据：文件 mtime 距今超过 ``ttl_days`` 天即视为过期。
-    通过 mtime 而非目录名判定，保证一天内多次启动产生的多个 run 文件
-    都能按各自写入时间被独立淘汰。
+    判定依据：
+        - 日期子目录下的 run 文件：按目录日期名判定。保留最近 ``ttl_days`` 天
+          （含今天），更早日期的目录下所有 run 文件整批删除。解决了 mtime 方式
+          在跨天重启时间差（如早上重启时昨天下午的文件还未满 24 小时）下的漏删
+          问题。
+        - 根目录平铺的 run 文件：使用 mtime 兜底。
 
     ``ttl_days <= 0`` 时跳过整个清理流程。
     """
     if ttl_days <= 0:
         return
 
-    cutoff = time.time() - ttl_days * 86400
     tmp_logger = logging.getLogger("core.logger._cleanup")
+    today = datetime.now().date()
+    # 保留 [today - ttl_days + 1, today] 共 ttl_days 天
+    cutoff_date = today - timedelta(days=ttl_days - 1)
     removed = 0
     scanned = 0
 
-    def _maybe_remove(p: Path) -> bool:
+    def _bulk_remove(paths: list) -> None:
         nonlocal removed
+        for p in paths:
+            try:
+                if p.is_file():
+                    p.unlink()
+                    removed += 1
+            except OSError as exc:
+                tmp_logger.warning("清理 run 日志失败 | path=%s | err=%s", p, exc)
+
+    if not LOG_ROOT.exists():
+        return
+
+    # ── 1) 各日期子目录下的 run_*.log（按目录日期名判定） ──
+    for entry in LOG_ROOT.iterdir():
+        if not entry.is_dir():
+            continue
         try:
-            if p.is_file() and p.stat().st_mtime < cutoff:
+            dir_date = datetime.strptime(entry.name, "%Y-%m-%d").date()
+        except ValueError:
+            # 非日期命名目录，跳过
+            continue
+        run_files = list(entry.glob("run_*.log"))
+        scanned += len(run_files)
+        if dir_date < cutoff_date:
+            _bulk_remove(run_files)
+            if run_files:
+                tmp_logger.debug("已清理过期 run 日志 | 目录=%s | 共%d个",
+                                 entry.name, len(run_files))
+
+    # ── 2) 根目录下的历史 run_*.log（平铺布局，mtime 兜底） ──
+    cutoff_mtime = time.time() - ttl_days * 86400
+    for p in LOG_ROOT.glob("run_*.log"):
+        scanned += 1
+        try:
+            if p.is_file() and p.stat().st_mtime < cutoff_mtime:
                 p.unlink()
                 removed += 1
-                return True
+                tmp_logger.debug("已清理过期 run 日志 | %s", p)
         except OSError as exc:
             tmp_logger.warning("清理 run 日志失败 | path=%s | err=%s", p, exc)
-        return False
-
-    # ── 1) 根目录下的历史 run_*.log（平铺布局） ──
-    if LOG_ROOT.exists():
-        for p in LOG_ROOT.glob("run_*.log"):
-            scanned += 1
-            if _maybe_remove(p):
-                tmp_logger.debug("已清理过期 run 日志 | %s", p)
-
-    # ── 2) 各日期子目录下的 run_*.log ──
-    if LOG_ROOT.exists():
-        for entry in LOG_ROOT.iterdir():
-            if not entry.is_dir():
-                continue
-            for p in entry.glob("run_*.log"):
-                scanned += 1
-                if _maybe_remove(p):
-                    tmp_logger.debug("已清理过期 run 日志 | %s", p)
 
     if removed:
         tmp_logger.info("run 日志 TTL 清理完成 | ttl=%d 天 | 删除 %d / 扫描 %d 个",

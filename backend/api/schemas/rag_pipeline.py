@@ -1,14 +1,10 @@
 """RAG Pipeline 请求/响应 schema。"""
-
 from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
-
 
 # ═══════════════════════════════════════════
 #  分块配置（告知前端当前分割策略）
 # ═══════════════════════════════════════════
-
 class SplitConfig(BaseModel):
     """当前生效的文档分割配置。"""
 
@@ -23,11 +19,9 @@ class SplitConfig(BaseModel):
         description="二级字符切分的分隔符优先级",
     )
 
-
 # ═══════════════════════════════════════════
 #  分块详情
 # ═══════════════════════════════════════════
-
 class ChunkDetail(BaseModel):
     """单个 chunk 的详细信息。"""
 
@@ -54,7 +48,6 @@ class ChunkDetail(BaseModel):
 # ═══════════════════════════════════════════
 #  处理请求
 # ═══════════════════════════════════════════
-
 class RAGProcessRequest(BaseModel):
     """处理 markdown 文件并存入向量库的请求（本地路径模式，保留兼容）。"""
 
@@ -76,7 +69,6 @@ class RAGProcessRequest(BaseModel):
 # ═══════════════════════════════════════════
 #  删除请求
 # ═══════════════════════════════════════════
-
 class RAGDeleteRequest(BaseModel):
     """从向量库删除文档的请求。"""
 

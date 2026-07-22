@@ -7,7 +7,10 @@
 ```bash
 cd frontend;  npm run dev   
 ``` 
+```bash
+.venv\Scripts\activate; streamlit run F:\index_rag\backend\memory_skill\skill\billing_analyze\scripts\billing\billing_view.py
 
+```
 ```bash
 cd F:\index_rag\frontend; npx @hey-api/openapi-ts -i http://localhost:8000/openapi.json -o src/api/client
 ```
