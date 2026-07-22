@@ -107,8 +107,9 @@ async def list_input_checkpoints(thread_id: str, limit: int = 50, offset: int = 
         # 提取叶子检查点 ID
         leaf_cid = leaf_map.get(cid)
 
-        # 提取用户输入内容预览
+        # 提取用户输入内容预览 + 触发消息 ID
         label = ""
+        trigger_msg_id: Optional[str] = None
         if snapshot.tasks:
             task = snapshot.tasks[0]
             result = task.result
@@ -125,9 +126,11 @@ async def list_input_checkpoints(thread_id: str, limit: int = 50, offset: int = 
                                 )
                             else:
                                 label = str(msg_content)
+                            trigger_msg_id = m.get("id")
                             break
                     elif hasattr(m, "content") and getattr(m, "type", None) == "human":
                         label = str(m.content)
+                        trigger_msg_id = getattr(m, "id", None)
                         break
 
         checkpoints.append(CheckpointSummary(
@@ -137,6 +140,7 @@ async def list_input_checkpoints(thread_id: str, limit: int = 50, offset: int = 
             parent_checkpoint_id=parent_cid,
             source=source,
             leaf_checkpoint_id=leaf_cid,
+            trigger_message_id=trigger_msg_id,
         ))
 
     logger.info("输入检查点列表获取完成 | thread_id=%s | total=%d | returned=%d", thread_id, total, len(checkpoints))

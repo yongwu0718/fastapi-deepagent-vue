@@ -1,29 +1,11 @@
-import os
 import yaml
+from backend.config.env_settings import RAG_CONFIG_PATH
 
-_PROJECT_ROOT: str | None = None
 _config: dict = {}
-
-
-def _find_project_root(marker: str = "rag_config.yaml") -> str:
-    """从当前文件所在目录开始，向上查找包含 marker 文件的目录作为项目根"""
-    current = os.path.dirname(os.path.abspath(__file__))
-    while True:
-        if os.path.exists(os.path.join(current, marker)):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:
-            raise FileNotFoundError(f"Project root not found: no '{marker}' found in ancestor directories")
-        current = parent
-
 
 def _load_yaml_config() -> dict:
     """读取 rag_config.yaml 并返回解析后的字典。"""
-    global _PROJECT_ROOT
-    if _PROJECT_ROOT is None:
-        _PROJECT_ROOT = _find_project_root()
-    config_path = os.path.join(_PROJECT_ROOT, "rag_config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(RAG_CONFIG_PATH, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -35,7 +17,7 @@ def reload_rag_config():
     global RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP, RAG_ENABLE_CHAR_SPLIT
     global RAG_HNSW_CONFIG
     global RAG_PROCESSING_PREVIEW_DIR, RAG_PROCESSING_INTERACTIVE
-    global RAG_COLLECTION_NAME, RAG_PERSIST_DIR
+    global RAG_COLLECTION_NAME, RAG_MEMORY_NAME, RAG_PERSIST_DIR
 
     _config = _load_yaml_config()
 
@@ -60,8 +42,9 @@ def reload_rag_config():
 
     # ── 集合 / 存储（纯 YAML 读取）──
     collection_cfg = _config.get("rag", {}).get("collection", {})
-    RAG_COLLECTION_NAME = collection_cfg.get("name", )
-    RAG_PERSIST_DIR = collection_cfg.get("persist_directory", )
+    RAG_COLLECTION_NAME = collection_cfg.get("name", "docsment")
+    RAG_MEMORY_NAME = collection_cfg.get("memory_name", "memory")
+    RAG_PERSIST_DIR = collection_cfg.get("persist_directory", "data/chroma_db")
 
 
 def get_raw_rag_config() -> dict:
@@ -72,10 +55,7 @@ def get_raw_rag_config() -> dict:
 
 def get_rag_config_path() -> str:
     """返回 rag_config.yaml 的绝对路径（与当前模块读取的是同一文件）。"""
-    global _PROJECT_ROOT
-    if _PROJECT_ROOT is None:
-        _PROJECT_ROOT = _find_project_root()
-    return os.path.join(_PROJECT_ROOT, "rag_config.yaml")
+    return RAG_CONFIG_PATH
 
 
 # 首次加载

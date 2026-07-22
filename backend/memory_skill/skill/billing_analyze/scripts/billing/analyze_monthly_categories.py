@@ -62,8 +62,6 @@ def load_data(db_path: str = DB_PATH, start_date: str | None = None, end_date: s
 
 def render_monthly_category_ranking(md, exp_records, inc_records, months):
     """每月类别排名（支出+收入）含 expense_type 分布"""
-
-    # 预聚合：每月每个类别下的 expense_type 分布（支出+收入）
     monthly_cat_all = {}
     for m in months:
         m_exp = [r for r in exp_records if r["year_month"] == m]
@@ -116,7 +114,6 @@ def render_monthly_category_ranking(md, exp_records, inc_records, months):
             pct = amt / m_expense_total * 100 if m_expense_total > 0 else 0
             amt_label = "+" if is_income else "-"
 
-            # 预计算各字段
             rigid_fixed = "¥{:,.0f}".format(info['刚性固定']) if info['刚性固定'] > 0 and not is_income else "—"
             rigid_nec = "¥{:,.0f}".format(info['刚性必要']) if info['刚性必要'] > 0 and not is_income else "—"
             flexible = "¥{:,.0f}".format(info['弹性可选']) if info['弹性可选'] > 0 and not is_income else "—"
@@ -132,7 +129,6 @@ def render_monthly_category_ranking(md, exp_records, inc_records, months):
 
 def _build_json(exp_records, inc_records, months, total_exp, total_inc):
     """构建 JSON 数据，返回 dict"""
-
     monthly_data = {}
     for m in months:
         m_exp = [r for r in exp_records if r["year_month"] == m]

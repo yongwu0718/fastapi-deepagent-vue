@@ -61,8 +61,7 @@ function loadCachedMessages(tid: string): Message[] | null {
 export async function loadThreadHistory(
   tid: string,
   checkpointId?: string | null,
-): Promise<Message[]> {
-  // 先读 localStorage 缓存（包含 SSE 绑定的 _checkpointId / _parentCheckpointId / _leafCheckpointId）
+): Promise<{ messages: Message[]; headCheckpointId: string | null }> {
   const cached = loadCachedMessages(tid)
 
   try {
@@ -72,6 +71,7 @@ export async function loadThreadHistory(
       path: { thread_id: tid },
       query: Object.keys(query).length > 0 ? query : undefined,
     })
+    const headCid = result.data?.head_checkpoint_id ?? null
     if (result.data?.messages?.length) {
       const msgs: Message[] = result.data.messages.map((m, idx) => {
         const normalized = normalizeContent(m.content)
@@ -80,33 +80,38 @@ export async function loadThreadHistory(
           content: normalized.text,
           contentBlocks: normalized.blocks.length > 0 ? normalized.blocks : undefined,
           reasonContent: m.reason_content ?? undefined,
-          // 从缓存中恢复 checkpoint 信息（按位置 + 角色 + 文本内容匹配）
-          ...pickCheckpointFromCache(cached, idx, m.role, normalized.text),
+          _msgId: m.id ?? undefined,
+          ...pickCheckpointFromCache(cached, idx, m.role, normalized.text, m.id ?? undefined),
         }
       })
       cacheThreadMessages(tid, msgs)
-      return mergeConsecutiveReasoningMessages(msgs)
+      return { messages: mergeConsecutiveReasoningMessages(msgs), headCheckpointId: headCid }
     }
+    return { messages: [], headCheckpointId: headCid }
   } catch {
-    // 后端请求失败 → 回退到 localStorage 缓存
-    if (cached && cached.length > 0) return cached
+    if (cached && cached.length > 0) return { messages: cached, headCheckpointId: null }
   }
-  return []
+  return { messages: [], headCheckpointId: null }
 }
 
-/** 从缓存消息中按位置/内容匹配恢复 checkpoint 字段 */
+/** 从缓存消息中恢复 checkpoint 字段：优先 _msgId 匹配，兜底位置+内容匹配 */
 function pickCheckpointFromCache(
   cached: Message[] | null,
   idx: number,
   role: string,
   content: string,
+  msgId?: string,
 ): { _checkpointId?: string | null; _parentCheckpointId?: string | null; _leafCheckpointId?: string | null } {
   if (!cached) return {}
-  const candidate = cached[idx]
-  // 按位置优先匹配：user 消息恢复 _checkpointId/_parentCheckpointId，assistant 消息恢复 _leafCheckpointId
-  const posMatch = pickFromCandidate(candidate, role, content)
+  // 优先：按 _msgId 精准匹配
+  if (msgId) {
+    const idMatch = cached.find((m) => m._msgId === msgId)
+    if (idMatch) return pickFromCandidate(idMatch, role, content) ?? {}
+  }
+  // 位置匹配
+  const posMatch = pickFromCandidate(cached[idx], role, content)
   if (posMatch) return posMatch
-  // 位置不匹配时遍历查找（分支切换/消息数量变化等场景）
+  // 内容匹配兜底
   const found = cached.find((m) => {
     if (m.role !== role || m.content !== content) return false
     return !!(m._checkpointId || m._leafCheckpointId)

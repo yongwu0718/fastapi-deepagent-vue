@@ -75,6 +75,10 @@ class CheckpointSummary(BaseModel):
         default=None,
         description="该 input 所在分支的叶子检查点 ID，用于分支切换时加载完整历史。None 表示尚未计算或分支未完成。",
     )
+    trigger_message_id: Optional[str] = Field(
+        default=None,
+        description="触发此检查点的用户消息 ID（LangChain message.id），用于前端刷新后权威绑定消息与检查点。None 表示无用户消息（如 resume 产生的检查点）。",
+    )
 
 
 class CheckpointHistoryResponse(BaseModel):

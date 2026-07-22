@@ -14,7 +14,6 @@ from backend.api.markdown_rag.rag_setting import (
     RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP, RAG_ENABLE_CHAR_SPLIT,
 )
 
-
 class MarkdownLoader:
     """
     Markdown文件加载器
@@ -28,7 +27,6 @@ class MarkdownLoader:
                 return f.read()
         except Exception as e:
             raise Exception(f"加载Markdown文件失败: {e}")
-
 
 class MarkdownSplitter:
     """
@@ -85,9 +83,6 @@ class VectorStoreCreator:
             )
         except Exception as e:
             raise Exception(f"创建向量存储失败: {e}")
-
-
-
 
 # ── CLI 入口：通过 HTTP API 调用入库（需先启动 FastAPI 服务） ──
 if __name__ == "__main__":

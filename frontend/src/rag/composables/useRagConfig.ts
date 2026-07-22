@@ -29,6 +29,7 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
       },
       collection: {
         name: '',
+        memory_name: 'memory',
         persist_directory: '',
       },
     },
@@ -69,6 +70,7 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
         },
         collection: {
           name: c.name ?? '',
+          memory_name: c.memory_name ?? 'memory',
           persist_directory: c.persist_directory ?? '',
         },
       },
@@ -93,6 +95,7 @@ export function useRagConfig(rag: ReturnType<typeof useRagManager>) {
         },
         collection: {
           name: configForm.value.rag.collection.name || undefined,
+          memory_name: configForm.value.rag.collection.memory_name || 'memory',
           persist_directory: configForm.value.rag.collection.persist_directory || undefined,
         },
       },

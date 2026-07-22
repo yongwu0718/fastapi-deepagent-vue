@@ -173,18 +173,13 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             "last_month": [m for m in months if rigid_fixed_by_month[m]["detail"].get(item_name, 0) > 0][-1] if non_zero else None
         }
 
-    # 收集所有刚性固定 item_name
     rigid_fixed_items = sorted(set(r["item_name"][:12] for r in rigid_fixed))
-
-    # Markdown 表头
     header_cols = ["月份", "总额"] + rigid_fixed_items + ["异常标记"]
     md.append("| " + " | ".join(header_cols) + " |\n")
     md.append("|" + "|".join(["------"] * len(header_cols)) + "|\n")
 
     for m in months:
         detail = rigid_fixed_by_month[m]["detail"]
-
-        # 异常检测
         flags = []
         for item_name, amt in detail.items():
             norm = fixed_norm.get(item_name, {})
@@ -192,7 +187,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
                 flags.append(f"⚠ {item_name}超常¥{amt:,.0f}")
             if norm.get("first_month") == m and amt > 0:
                 flags.append(f"🆕 新增{item_name}¥{amt:,.0f}/月")
-
         flag_str = "<br>".join(flags) if flags else "—"
 
         row_data = [m, f"¥{rigid_fixed_by_month[m]['total']:,.0f}"]
@@ -206,7 +200,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
 
     # ─── 三、刚性必要支出效率追踪 ──────────────────────────
     md.append("---\n\n## 三、刚性必要支出效率追踪\n\n")
-
     md.append("| 月份 | 总额 | 环比 | 细项分类 | 效率评价 |\n")
     md.append("|------|------|------|------|------|\n")
 
@@ -215,7 +208,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         m_necessary = [r for r in rigid_necessary if r["year_month"] == m]
         m_total = sum(r["amount"] for r in m_necessary)
 
-        # 环比
         if prev_total is not None and prev_total > 0:
             diff = m_total - prev_total
             pct = diff / prev_total * 100
@@ -225,7 +217,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             mom_str = "—"
         prev_total = m_total
 
-        # 按 category 汇总
         cat_breakdown = defaultdict(lambda: {"total": 0.0, "count": 0})
         for r in m_necessary:
             cat_breakdown[r["category"]]["total"] += r["amount"]
@@ -235,7 +226,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         for cat, info in sorted(cat_breakdown.items(), key=lambda x: x[1]["total"], reverse=True):
             detail_parts.append(f"**{cat}**:¥{info['total']:,.0f}({info['count']}笔)")
 
-        # 交通方式细分
         transport = [r for r in m_necessary if r["category"] == "交通出行"]
         if transport:
             transport_by_item = defaultdict(float)
@@ -244,7 +234,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             t_str = "<br>".join([f"{k}¥{v:,.0f}" for k, v in sorted(transport_by_item.items(), key=lambda x: x[1], reverse=True)])
             detail_parts.append(f"- {t_str}")
 
-        # 其他支出细分
         other = [r for r in m_necessary if r["category"] == "其他支出"]
         if other:
             other_by_item = defaultdict(float)
@@ -255,7 +244,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
 
         detail_str = "<br>".join(detail_parts)
 
-        # 效率评价
         flags = []
         for cat, info in cat_breakdown.items():
             if cat == "交通出行" and info["total"] > 500:
@@ -268,7 +256,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             flags.append("基本正常")
 
         efficiency = "<br>".join(flags)
-
         md.append(f"| {m} | ¥{m_total:,.0f} | {mom_str} | {detail_str} | {efficiency} |\n")
 
     md.append("\n")
@@ -276,9 +263,7 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
     # ─── 四、弹性可选支出追踪 ──────────────────────────────
     md.append("---\n\n## 四、弹性可选支出追踪\n\n")
 
-    # 收集所有弹性支出中的 category
     flex_categories = sorted(set(r["category"] for r in flexible))
-
     header_cols = ["月份", "总额"] + flex_categories + ["高频消费(>10次)", "大额消费(>¥50)"]
     md.append("| " + " | ".join(header_cols) + " |\n")
     md.append("|" + "|".join(["------"] * len(header_cols)) + "|\n")
@@ -287,20 +272,17 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         m_flex = [r for r in flexible if r["year_month"] == m]
         total_flex = sum(r["amount"] for r in m_flex)
 
-        # 按 category 统计金额
         cat_amounts = defaultdict(float)
         item_counts = defaultdict(int)
         for r in m_flex:
             cat_amounts[r["category"]] += r["amount"]
             item_counts[r["item_name"]] += 1
 
-        # 高频消费（同 item_name 出现 >10 次）
         high_freq_items = [item for item, cnt in item_counts.items() if cnt > 10]
         high_freq_str = "<br>".join(high_freq_items[:8]) if high_freq_items else "—"
         if len(high_freq_items) > 8:
             high_freq_str += f" (等{len(high_freq_items)}项)"
 
-        # 大额消费（单笔 >¥50）
         large_items = [(r["item_name"][:12], r["amount"]) for r in m_flex if r["amount"] > 50]
         if large_items:
             large_parts = [f"{name} ¥{amt:,.0f}" for name, amt in sorted(large_items, key=lambda x: x[1], reverse=True)]
@@ -308,7 +290,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         else:
             large_str = "—"
 
-        # 构建行数据
         row_data = [m, f"¥{total_flex:,.0f}"]
         for cat in flex_categories:
             amt = cat_amounts.get(cat, 0)
@@ -320,8 +301,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
     md.append("\n")
 
     # ─── JSON 输出 ────────────────────────────────────────────
-
-    # 重新构建逐月数据（避免被重写的 rigid_fixed_by_month 影响）
     income_by_month_json = defaultdict(float)
     real_income_by_month_json = defaultdict(float)
     expense_by_month_json = defaultdict(float)
@@ -346,7 +325,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         elif etype == "弹性可选":
             flex_exp_json[ym] += r["amount"]
 
-    # 一、逐月收支明细
     monthly_income_expense = []
     for m in months:
         inc = income_by_month_json.get(m, 0)
@@ -359,7 +337,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
         rigid_burden = f"{round((rf + rn) / real_inc * 100)}%" if real_inc > 0 else "0%"
         net = inc - exp
         ratio = f"{round(exp / inc * 100)}%" if inc > 0 else "N/A"
-
         evaluation = "✅ 结余" if net >= 0 else ("🔴 严重赤字" if real_inc > 0 and (inc > 0 and exp / inc * 100 > 150) else "⚠️ 赤字")
 
         monthly_income_expense.append({
@@ -377,7 +354,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             "evaluation": evaluation,
         })
 
-    # 二、刚性固定月度监控（含异常检测）
     rigid_fixed_by_month_detail = {}
     for m in months:
         items = [r for r in rigid_fixed if r["year_month"] == m]
@@ -389,7 +365,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             "detail": dict(detail),
         }
 
-    # 计算正常水平
     fixed_norm_dict = {}
     for item_name in set(k for m in months for k in rigid_fixed_by_month_detail[m]["detail"]):
         amounts = [rigid_fixed_by_month_detail[m]["detail"].get(item_name, 0) for m in months]
@@ -426,14 +401,12 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             "anomaly_flags": "\n".join(anomaly_flags) if anomaly_flags else "—",
         })
 
-    # 三、刚性必要效率追踪
     rigid_necessary_monthly = []
     prev_nec_total = None
     for m in months:
         m_necessary = [r for r in rigid_necessary if r["year_month"] == m]
         m_total = sum(r["amount"] for r in m_necessary)
 
-        # 环比
         if prev_nec_total is not None and prev_nec_total > 0:
             diff = m_total - prev_nec_total
             pct = diff / prev_nec_total * 100
@@ -480,7 +453,6 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             "efficiency_evaluation": " | ".join(efficiency_flags) if efficiency_flags else "基本正常",
         })
 
-    # 四、弹性可选消费行为
     flexible_monthly = []
     for m in months:
         m_flex = [r for r in flexible if r["year_month"] == m]
@@ -492,13 +464,11 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
             cat_amounts[r["category"]] += r["amount"]
             item_counts[r["item_name"]] += 1
 
-        # 高频消费
         high_freq_list = [item for item, cnt in item_counts.items() if cnt > 10]
         high_freq_str = " | ".join(high_freq_list[:8]) if high_freq_list else "—"
         if len(high_freq_list) > 8:
             high_freq_str += f" (等{len(high_freq_list)}项)"
 
-        # 大额消费
         large_list = [(r["item_name"][:12], r["amount"]) for r in m_flex if r["amount"] > 50]
         large_list.sort(key=lambda x: x[1], reverse=True)
         large_str = "\n".join([f"{name} ¥{amt:,.0f}" for name, amt in large_list]) if large_list else "—"

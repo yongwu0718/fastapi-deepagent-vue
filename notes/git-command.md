@@ -7,6 +7,7 @@
 ```bash
 git status
 ```
+
 确认哪些文件被修改、新增或删除。
 
 **2. 暂存所有变更**
@@ -26,11 +27,13 @@ git commit --amend --no-edit
 ```
 
 **4. 拉取远程最新代码（避免冲突）**
+
 ```bash
 git pull --rebase origin master
 ```
 
 **5. 推送到 GitHub**
+
 ```bash
 git push origin master
 ```
@@ -39,7 +42,8 @@ git push origin master
 git push -u origin master:main
 ```
 
-> 💡 **快捷版（无冲突时）**  
+> 💡 **快捷版（无冲突时）**
+>
 > ```bash
 > git add .
 > git commit -m "update"
@@ -47,17 +51,19 @@ git push -u origin master:main
 > git push
 > ```
 
----
+***
 
 ### 🔁 完整循环示例（从零开始克隆并推送修改）
 
 **1. 克隆远程仓库**
+
 ```bash
 git clone git@github.com:yongwu0718/index-rag.git
 cd index-rag
 ```
 
 **2. 修改文件后，重复上述同步流程**
+
 ```bash
 git add .
 git commit -m "feat: add new feature"
@@ -67,28 +73,32 @@ git push
 
 这样就能把本地修改安全地同步到 GitHub 了。
 
-
 ## 🔄 移除本地文件夹（保留 Git 仓库中的记录）
 
-*适用场景：比如 `node_modules`、`dist`、`.idea` 或包含敏感信息的配置文件夹，你本地还要用，但不想让它出现在 GitHub/GitLab 上。*
+*适用场景：比如* *`node_modules`、`dist`、`.idea`* *或包含敏感信息的配置文件夹，你本地还要用，但不想让它出现在 GitHub/GitLab 上。*
 
 1. **停止追踪该文件夹**（关键参数是 `-r` 和 `--cached`）：
+
 ```bash
 git rm -r --cached <文件夹名称>
 ```
-   *(注：`-r` 表示递归处理文件夹内的所有内容，`--cached` 表示只删除 Git 记录，**绝不删除**你电脑上的本地文件)*
 
-2. **提交更改**：
+*(注：`-r`* *表示递归处理文件夹内的所有内容，`--cached`* *表示只删除 Git 记录，**绝不删除**你电脑上的本地文件)*
+
+1. **提交更改**：
+
 ```bash
 git commit -m "chore: 停止追踪文件夹 <文件夹名称>"
 ```
 
-3. **推送到远程仓库**：
+1. **推送到远程仓库**：
+
 ```bash
 git push
 ```
 
-4. **⚠️ 必须做的一步**：打开项目根目录的 `.gitignore` 文件，把这个文件夹的名字加进去，防止下次 `git add .` 时又把它加回去。
+1. **⚠️ 必须做的一步**：打开项目根目录的 `.gitignore` 文件，把这个文件夹的名字加进去，防止下次 `git add .` 时又把它加回去。
+
 ```text
 # .gitignore 文件中添加
 <文件夹名称>/
@@ -352,4 +362,3 @@ git blame -L 10,20 src/app.js
 ```
 
 **🔍 日志与对比 (Log & Diff)**
-

@@ -120,6 +120,10 @@ defineProps<{
           <input v-model="configForm.rag.collection.name" class="form-input" type="text" placeholder="如 my_collection" />
         </div>
         <div class="config-row">
+          <label class="config-label">记忆集合名称 <span class="config-hint">记忆库 Chroma 集合名称</span></label>
+          <input v-model="configForm.rag.collection.memory_name" class="form-input" type="text" placeholder="memory" />
+        </div>
+        <div class="config-row">
           <label class="config-label">持久化目录 <span class="config-hint">向量库磁盘路径</span></label>
           <input v-model="configForm.rag.collection.persist_directory" class="form-input" type="text" placeholder="如 ./chroma_db" />
         </div>

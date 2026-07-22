@@ -114,6 +114,12 @@ export type ChatResponse = {
      * Messages
      */
     messages: Array<MessageResponse>;
+    /**
+     * Head Checkpoint Id
+     *
+     * 当前分支头检查点 ID，用于前端刷新后恢复 _leafCheckpointId
+     */
+    head_checkpoint_id?: string | null;
 };
 
 /**
@@ -179,6 +185,12 @@ export type CheckpointSummary = {
      * 该 input 所在分支的叶子检查点 ID，用于分支切换时加载完整历史。None 表示尚未计算或分支未完成。
      */
     leaf_checkpoint_id?: string | null;
+    /**
+     * Trigger Message Id
+     *
+     * 触发此检查点的用户消息 ID（LangChain message.id），用于前端刷新后权威绑定消息与检查点。None 表示无用户消息（如 resume 产生的检查点）。
+     */
+    trigger_message_id?: string | null;
 };
 
 /**
@@ -641,6 +653,12 @@ export type MessageResponse = {
      * Reason Content
      */
     reason_content?: string | null;
+    /**
+     * Id
+     *
+     * LangChain 消息唯一 ID，用于前端绑定检查点
+     */
+    id?: string | null;
 };
 
 /**
@@ -692,7 +710,7 @@ export type RagCollectionConfig = {
     /**
      * Name
      *
-     * Chroma 集合名称
+     * Chroma 集合名称（3-63字符，字母/数字/._-，首尾须为字母或数字）
      */
     name?: string;
     /**

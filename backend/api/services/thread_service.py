@@ -47,7 +47,10 @@ async def get_thread_history(thread_id: str, checkpoint_id: Optional[str] = None
             filtered.append(resp)
 
     logger.info("会话历史获取完成 | thread_id=%s | messages=%d", thread_id, len(filtered))
-    return ChatResponse(messages=filtered)
+    head_cid = None
+    if state.config and isinstance(state.config, dict):
+        head_cid = state.config.get("configurable", {}).get("checkpoint_id")
+    return ChatResponse(messages=filtered, head_checkpoint_id=head_cid)
 
 
 def delete_thread_history(thread_id: str) -> dict:

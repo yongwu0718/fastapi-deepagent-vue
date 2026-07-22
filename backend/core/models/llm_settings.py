@@ -1,30 +1,14 @@
 import os
 import yaml
+from backend.config.env_settings import MODEL_CONFIG_PATH
 
-_PROJECT_ROOT: str | None = None
 _config: dict = {}
 _SENTINEL = object()
 
 
-def _find_project_root(marker: str = "model_config.yaml") -> str:
-    """从当前文件所在目录开始，向上查找包含 marker 文件的目录作为项目根"""
-    current = os.path.dirname(os.path.abspath(__file__))
-    while True:
-        if os.path.exists(os.path.join(current, marker)):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:
-            raise FileNotFoundError(f"Project root not found: no '{marker}' found in ancestor directories")
-        current = parent
-
-
 def _load_yaml_config() -> dict:
     """读取 model_config.yaml 并返回解析后的字典。"""
-    global _PROJECT_ROOT
-    if _PROJECT_ROOT is None:
-        _PROJECT_ROOT = _find_project_root()
-    config_path = os.path.join(_PROJECT_ROOT, "model_config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 

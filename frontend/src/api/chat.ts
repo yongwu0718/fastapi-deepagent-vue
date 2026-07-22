@@ -53,6 +53,11 @@ export interface Message {
   _leafCheckpointId?: string | null
   /** 前端内部 key，保证 v-for 稳定性 */
   _key?: string
+  /**
+   * LangChain 消息唯一 ID（来自后端 MessageResponse.id）。
+   * 用于刷新恢复时权威绑定消息与检查点（替代内容匹配）。
+   */
+  _msgId?: string
 }
 
 /** 流式响应的 chunk 类型 */

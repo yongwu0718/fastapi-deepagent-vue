@@ -96,44 +96,33 @@ export function useChatController(
 
     historyLoading.value = true
 
-    // 优先恢复缓存的叶子分支
     const cachedLeaf = loadBranchLeaf()
-    // 加载完整历史：不传入 checkpoint_id，避免后端只返回叶子分支的片段
     loadThreadHistory(newId)
-      .then(async (serverMsgs) => {
+      .then(async ({ messages: serverMsgs, headCheckpointId }) => {
+        const leafCid = headCheckpointId ?? cachedLeaf
+
         if (serverMsgs.length > 0) {
           messages.value = mergeConsecutiveReasoningMessages(serverMsgs.map(ensureMessageKey))
         } else {
           messages.value = [ensureMessageKey({ role: 'assistant', content: '你好！我是 AI 助手，有什么可以帮你的？' })]
         }
 
-        // 刷新恢复：给缺失 _checkpointId 的 user 消息绑定检查点
-        const needsBinding = serverMsgs.some(
-          (m) => m.role === 'user' && !m._checkpointId,
-        )
+        // 刷新恢复：ID 绑定优先，内容匹配兜底
+        const needsBinding = serverMsgs.some((m) => m.role === 'user' && !m._checkpointId)
         if (needsBinding) {
           loggerCheckpoint.info('刷新恢复，通过 /inputs 绑定检查点')
           try {
             await checkpoints.loadCheckpoints()
             let bound = 0
-            const boundMsgs = await Promise.all(
-              messages.value.map(async (msg) => {
-                if (msg.role !== 'user' || msg._checkpointId) return msg
-                const resolved = await checkpoints.resolveCheckpointForMessage(getContentText(msg.content))
-                if (resolved) {
-                  bound++
-                  // 与 SSE 实时绑定保持一致：
-                  // _checkpointId 绑定 input 检查点自身 ID（重试用）
-                  // _parentCheckpointId 绑定父检查点 ID（分支用）
-                  return {
-                    ...msg,
-                    _checkpointId: resolved.checkpointId,
-                    _parentCheckpointId: resolved.parentCheckpointId,
-                  }
-                }
-                return msg
-              }),
-            )
+            const boundMsgs = messages.value.map((msg) => {
+              if (msg.role !== 'user' || msg._checkpointId) return msg
+              const resolved = checkpoints.resolveCheckpoint(msg._msgId, getContentText(msg.content))
+              if (resolved) {
+                bound++
+                return { ...msg, _checkpointId: resolved.checkpointId, _parentCheckpointId: resolved.parentCheckpointId }
+              }
+              return msg
+            })
             messages.value = boundMsgs
             if (bound > 0) {
               loggerCheckpoint.info('绑定检查点', { bound })
@@ -142,8 +131,8 @@ export function useChatController(
           } catch { /* /inputs 失败不影响聊天 */ }
         }
 
-        // 刷新恢复：用持久化的分支叶子 ID 补全 assistant 消息的 _leafCheckpointId
-        if (cachedLeaf) {
+        // 刷新恢复：head_checkpoint_id（优先）或缓存叶子 ID 绑定 _leafCheckpointId
+        if (leafCid) {
           const lastAssIdx = [...messages.value].reverse().findIndex((m) => m.role === 'assistant')
           if (lastAssIdx >= 0) {
             const realIdx = messages.value.length - 1 - lastAssIdx
@@ -151,11 +140,12 @@ export function useChatController(
             if (!lastAss._leafCheckpointId) {
               messages.value = [
                 ...messages.value.slice(0, realIdx),
-                { ...lastAss, _leafCheckpointId: cachedLeaf },
+                { ...lastAss, _leafCheckpointId: leafCid },
                 ...messages.value.slice(realIdx + 1),
               ]
+              persistBranchLeaf(leafCid)
               cacheThreadMessages(newId, messages.value)
-              loggerCheckpoint.info('刷新后恢复叶子检查点', { index: realIdx, leafCid: cachedLeaf.slice(-12) })
+              loggerCheckpoint.info('刷新后恢复叶子检查点', { index: realIdx, leafCid: leafCid.slice(-12) })
             }
           }
         }
@@ -399,28 +389,22 @@ export function useChatController(
     branchSwitchingIndex.value = msgIndex
     try {
       loggerFork.info('switch branch', { leafCid: targetLeafCheckpointId.slice(-12) })
-      const branchMsgs = await loadThreadHistory(threadId.value, targetLeafCheckpointId)
+      const { messages: branchMsgs } = await loadThreadHistory(threadId.value, targetLeafCheckpointId)
       if (branchMsgs.length > 0) {
         messages.value = mergeConsecutiveReasoningMessages(branchMsgs.map(ensureMessageKey))
-        // 加载后补全 _checkpointId / _parentCheckpointId
+        // 加载后补全 _checkpointId / _parentCheckpointId（id 匹配优先）
         try {
           await checkpoints.loadCheckpoints()
           let bound = 0
-          const boundMsgs = await Promise.all(
-            messages.value.map(async (msg) => {
-              if (msg.role !== 'user' || msg._checkpointId) return msg
-              const resolved = await checkpoints.resolveCheckpointForMessage(getContentText(msg.content))
-              if (resolved) {
-                bound++
-                return {
-                  ...msg,
-                  _checkpointId: resolved.checkpointId,
-                  _parentCheckpointId: resolved.parentCheckpointId,
-                }
-              }
-              return msg
-            }),
-          )
+          const boundMsgs = messages.value.map((msg) => {
+            if (msg.role !== 'user' || msg._checkpointId) return msg
+            const resolved = checkpoints.resolveCheckpoint(msg._msgId, getContentText(msg.content))
+            if (resolved) {
+              bound++
+              return { ...msg, _checkpointId: resolved.checkpointId, _parentCheckpointId: resolved.parentCheckpointId }
+            }
+            return msg
+          })
           messages.value = boundMsgs
           if (bound > 0) {
             loggerCheckpoint.info('分支切换后绑定检查点', { bound })
