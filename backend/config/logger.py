@@ -117,6 +117,16 @@ class ContextFilter(logging.Filter):
         return True
 
 
+class HeartbeatFilter(logging.Filter):
+    """过滤 MCP 心跳/Ping 请求日志，减少日志噪音。"""
+
+    _SKIP_KEYWORDS = ("PingRequest",)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(kw in msg for kw in self._SKIP_KEYWORDS)
+
+
 # ── 当前会话日志目录 & 启动文件路径（供外部查询/调试） ──
 CURRENT_DATE_DIR: Optional[Path] = None
 CURRENT_RUN_LOG_FILE: Optional[Path] = None
@@ -173,8 +183,10 @@ def setup_logging(
         backupCount=backup_count,
         encoding="utf-8",
     )
+    heartbeat_filter = HeartbeatFilter()
     daily_handler.setLevel(TRACE)  # 文件记录所有级别
     daily_handler.setFormatter(_FILE_FORMAT)
+    daily_handler.addFilter(heartbeat_filter)
     daily_handler.addFilter(ContextFilter())
     daily_handler.namer = _daily_namer  # 滚动后改名追加日期后缀
     root_logger.addHandler(daily_handler)
@@ -190,6 +202,7 @@ def setup_logging(
     )
     run_handler.setLevel(TRACE)
     run_handler.setFormatter(_FILE_FORMAT)
+    run_handler.addFilter(heartbeat_filter)
     run_handler.addFilter(ContextFilter())
     root_logger.addHandler(run_handler)
     CURRENT_RUN_LOG_FILE = run_path
