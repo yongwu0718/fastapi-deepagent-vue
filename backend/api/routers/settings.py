@@ -1,4 +1,6 @@
 """设置管理路由 —— 读写指定的配置文件。"""
+from typing import Annotated, Any
+
 from fastapi import APIRouter, Query
 
 from backend.api.services.settings_service import (
@@ -25,7 +27,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
     log_msg="配置读取异常 | path={path}",
     detail_msg="配置读取失败: path={path}",
 )
-async def read_model_config_endpoint(path: str = Query(..., description="配置文件标识")):
+async def read_model_config_endpoint(path: Annotated[str, Query(description="配置文件标识")]) -> dict[str, Any]:
     """读取指定配置文件内容。"""
     logger.info("GET /settings/model-config/read | path=%s", path)
     return await read_config_file(path)
@@ -38,7 +40,7 @@ async def read_model_config_endpoint(path: str = Query(..., description="配置�
     log_msg="配置写入异常 | path={body.path}",
     detail_msg="配置写入失败: path={body.path}",
 )
-async def write_model_config_endpoint(body: ModifyFileRequest):
+async def write_model_config_endpoint(body: ModifyFileRequest) -> dict[str, Any]:
     """覆写指定配置文件内容。"""
     logger.info("PUT /settings/model-config/write | path=%s | content_len=%d", body.path, len(body.content))
     return await write_config_file(body.path, body.content)
@@ -53,7 +55,7 @@ async def write_model_config_endpoint(body: ModifyFileRequest):
     log_msg="Skills 状态查询异常",
     detail_msg="Skills 状态查询失败",
 )
-async def get_skills():
+async def get_skills() -> dict[str, Any]:
     """获取所有 skill 及其启用状态。"""
     logger.info("GET /settings/skills")
     return await get_skills_status()
@@ -65,7 +67,7 @@ async def get_skills():
     log_msg="Skills 状态更新异常",
     detail_msg="Skills 状态更新失败",
 )
-async def update_skills(body: SkillsUpdateRequest):
+async def update_skills(body: SkillsUpdateRequest) -> dict[str, Any]:
     """更新启用的 skill 列表并重建 Graph。"""
     logger.info("PUT /settings/skills | enabled=%s", body.enabled)
     result = await update_skills_status(body.enabled)
@@ -83,6 +85,6 @@ async def update_skills(body: SkillsUpdateRequest):
     log_msg="Graph 重建失败",
     detail_msg="Graph 重建失败",
 )
-async def rebuild():
+async def rebuild() -> dict[str, Any]:
     """重新编译 LangGraph，使配置生效。"""
     return await rebuild_graph()

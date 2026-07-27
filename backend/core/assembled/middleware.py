@@ -46,7 +46,7 @@ rubric_middleware = RubricMiddleware(
 
 
 add_middleware=[
-    manual_tool,
+    #manual_tool,
     truncate_tool_calls,
     CodeInterpreterMiddleware(),
     rubric_middleware,

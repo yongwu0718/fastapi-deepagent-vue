@@ -8,12 +8,12 @@ from pydantic import BaseModel, Field, field_validator
 class SplitConfig(BaseModel):
     """当前生效的文档分割配置。"""
 
-    headers: list[str] = Field(..., description="用于切分的标题层级，如 ['#', '##', '###']")
+    headers: list[str] = Field(description="用于切分的标题层级，如 ['#', '##', '###']")
     return_each_line: bool = Field(default=False, description="是否逐行返回")
     strip_headers: bool = Field(default=False, description="是否剥离标题行")
     enable_char_split: bool = Field(default=True, description="是否启用二级字符切分")
-    chunk_size: int = Field(..., description="字符切分的最大 chunk 大小（字符数）")
-    chunk_overlap: int = Field(..., description="字符切分的重叠区间大小（字符数）")
+    chunk_size: int = Field(description="字符切分的最大 chunk 大小（字符数）")
+    chunk_overlap: int = Field(description="字符切分的重叠区间大小（字符数）")
     secondary_separators: list[str] = Field(
         default_factory=lambda: ["\n\n", "\n", "。", "，", " ", ""],
         description="二级字符切分的分隔符优先级",
@@ -25,9 +25,9 @@ class SplitConfig(BaseModel):
 class ChunkDetail(BaseModel):
     """单个 chunk 的详细信息。"""
 
-    index: int = Field(..., description="分块序号，从 1 开始")
-    content_length: int = Field(..., description="该 chunk 的字符数")
-    preview: str = Field(..., description="前 120 个字符的摘要预览")
+    index: int = Field(description="分块序号，从 1 开始")
+    content_length: int = Field(description="该 chunk 的字符数")
+    preview: str = Field(description="前 120 个字符的摘要预览")
     header_path: Optional[str] = Field(
         default=None,
         description="该 chunk 所属的标题路径，如 '# 概述 > ## 背景'",
@@ -86,9 +86,9 @@ class RAGDeleteRequest(BaseModel):
 class RAGProcessResult(BaseModel):
     """单个文件的处理结果。"""
 
-    filename: str = Field(..., description="文件名")
-    file_size: int = Field(..., description="原文件大小（字节）")
-    chunks_count: int = Field(..., description="生成的分块数")
+    filename: str = Field(description="文件名")
+    file_size: int = Field(description="原文件大小（字节）")
+    chunks_count: int = Field(description="生成的分块数")
     status: str = Field(default="success", description="处理状态: success / error")
     error: Optional[str] = Field(default=None, description="失败时的错误信息")
     chunks: list[ChunkDetail] = Field(
@@ -100,12 +100,12 @@ class RAGProcessResult(BaseModel):
 class RAGProcessResponse(BaseModel):
     """批量处理响应。"""
 
-    total_files: int = Field(..., description="总文件数")
-    success_count: int = Field(..., description="成功数")
-    failed_count: int = Field(..., description="失败数")
-    total_chunks: int = Field(..., description="总入库分块数")
-    collection_count: int = Field(..., description="向量库当前文档块总数")
-    split_config: SplitConfig = Field(..., description="本次处理使用的分割配置")
+    total_files: int = Field(description="总文件数")
+    success_count: int = Field(description="成功数")
+    failed_count: int = Field(description="失败数")
+    total_chunks: int = Field(description="总入库分块数")
+    collection_count: int = Field(description="向量库当前文档块总数")
+    split_config: SplitConfig = Field(description="本次处理使用的分割配置")
     results: list[RAGProcessResult] = Field(default_factory=list, description="每个文件的处理详情")
 
 
@@ -116,8 +116,8 @@ class RAGProcessResponse(BaseModel):
 class RAGDeleteResponse(BaseModel):
     """删除操作响应。"""
 
-    deleted_count: int = Field(..., description="成功删除的文档数")
-    collection_count: int = Field(..., description="向量库当前文档块总数")
+    deleted_count: int = Field(description="成功删除的文档数")
+    collection_count: int = Field(description="向量库当前文档块总数")
     message: str = Field(default="删除成功", description="操作描述")
 
 
@@ -128,11 +128,11 @@ class RAGDeleteResponse(BaseModel):
 class RAGHealthResponse(BaseModel):
     """向量库健康检查响应。"""
 
-    collection_name: str = Field(..., description="集合名称")
-    collection_count: int = Field(..., description="当前文档块总数")
-    persist_directory: str = Field(..., description="持久化目录")
-    embedding_model: str = Field(..., description="嵌入模型名称")
-    embedding_base_url: str = Field(..., description="嵌入模型服务地址")
+    collection_name: str = Field(description="集合名称")
+    collection_count: int = Field(description="当前文档块总数")
+    persist_directory: str = Field(description="持久化目录")
+    embedding_model: str = Field(description="嵌入模型名称")
+    embedding_base_url: str = Field(description="嵌入模型服务地址")
 
 
 # ═══════════════════════════════════════════
@@ -208,8 +208,8 @@ class RAGFullConfigModel(BaseModel):
 
 class CollectionInfo(BaseModel):
     """集合基本信息。"""
-    name: str = Field(..., description="集合名称")
-    count: int = Field(..., description="文档数量")
+    name: str = Field(description="集合名称")
+    count: int = Field(description="文档数量")
 
 
 class CollectionListResponse(BaseModel):
@@ -219,52 +219,52 @@ class CollectionListResponse(BaseModel):
 
 class CollectionStatsResponse(BaseModel):
     """集合统计数据。"""
-    collection_name: str = Field(..., description="集合名称")
-    total_count: int = Field(..., description="总文档数")
-    sampled_count: int = Field(..., description="实际采样数（可能小于 total_count）")
-    non_empty_count: int = Field(..., description="非空文档数")
-    empty_count: int = Field(..., description="空文档数")
-    empty_rate: str = Field(..., description="文档非空率（百分比）")
-    avg_doc_length: float = Field(..., description="平均文档长度（字符数）")
+    collection_name: str = Field(description="集合名称")
+    total_count: int = Field(description="总文档数")
+    sampled_count: int = Field(description="实际采样数（可能小于 total_count）")
+    non_empty_count: int = Field(description="非空文档数")
+    empty_count: int = Field(description="空文档数")
+    empty_rate: str = Field(description="文档非空率（百分比）")
+    avg_doc_length: float = Field(description="平均文档长度（字符数）")
     vector_dimension: Optional[int] = Field(default=None, description="向量维度")
     metadata_coverage: list[dict] = Field(default_factory=list, description="元数据字段覆盖率列表")
 
 
 class CollectionDocument(BaseModel):
     """集合中的单条文档。"""
-    id: str = Field(..., description="文档 ID")
+    id: str = Field(description="文档 ID")
     document: Optional[str] = Field(default=None, description="文档内容")
     metadata: Optional[dict] = Field(default=None, description="元数据键值对")
 
 
 class CollectionDocumentsResponse(BaseModel):
     """分页文档响应。"""
-    collection_name: str = Field(..., description="集合名称")
-    page: int = Field(..., description="当前页码")
-    page_size: int = Field(..., description="每页条数")
-    total: int = Field(..., description="总文档数")
+    collection_name: str = Field(description="集合名称")
+    page: int = Field(description="当前页码")
+    page_size: int = Field(description="每页条数")
+    total: int = Field(description="总文档数")
     documents: list[CollectionDocument] = Field(default_factory=list, description="当前页文档列表")
 
 
 class DeleteDocsRequest(BaseModel):
     """批量删除文档请求。"""
-    ids: list[str] = Field(..., min_length=1, description="待删除的文档 ID 列表")
+    ids: list[str] = Field(min_length=1, description="待删除的文档 ID 列表")
 
 
 class DeleteDocsResponse(BaseModel):
     """批量删除文档响应。"""
-    deleted_count: int = Field(..., description="成功删除的文档数")
+    deleted_count: int = Field(description="成功删除的文档数")
     message: str = Field(default="删除成功", description="操作描述")
 
 
 class ClearCollectionResponse(BaseModel):
     """清空集合响应。"""
-    deleted_count: int = Field(..., description="清除的文档数")
-    collection_name: str = Field(..., description="集合名称")
+    deleted_count: int = Field(description="清除的文档数")
+    collection_name: str = Field(description="集合名称")
     message: str = Field(default="集合已清空", description="操作描述")
 
 
 class DeleteCollectionResponse(BaseModel):
     """删除集合响应。"""
-    collection_name: str = Field(..., description="已删除的集合名称")
+    collection_name: str = Field(description="已删除的集合名称")
     message: str = Field(default="集合已删除", description="操作描述")

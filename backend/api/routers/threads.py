@@ -1,8 +1,8 @@
 """线程管理路由 —— 历史/删除/列表。"""
 
-from typing import Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Path, Query
 
 from backend.api.schemas.response import ChatResponse
 from backend.api.services.thread_service import get_thread_history, delete_thread_history, list_threads
@@ -22,9 +22,9 @@ router = APIRouter(tags=["threads"])
     detail_msg="获取会话历史失败: thread_id={thread_id}",
 )
 async def get_messages_history(
-    thread_id: str,
-    checkpoint_id: Optional[str] = Query(default=None, description="可选，指定检查点 ID 以获取对应分支的消息"),
-):
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    checkpoint_id: Annotated[str | None, Query(description="可选，指定检查点 ID 以获取对应分支的消息")] = None,
+) -> ChatResponse:
     """获取会话历史消息。
 
     - 不传 checkpoint_id：获取最新状态
@@ -40,7 +40,9 @@ async def get_messages_history(
     log_msg="删除会话历史异常 | thread_id={thread_id}",
     detail_msg="删除会话历史失败: thread_id={thread_id}",
 )
-async def delete_messages_history(thread_id: str):
+def delete_messages_history(
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+):
     """删除会话历史"""
     logger.info("DELETE /chat/%s/delete-messages-history", thread_id)
     result = delete_thread_history(thread_id)
@@ -53,7 +55,7 @@ async def delete_messages_history(thread_id: str):
 
 
 @router.get("/threads")
-async def list_threads_endpoint():
+def list_threads_endpoint():
     """列出所有对话线程"""
     logger.debug("GET /threads")
     return list_threads()

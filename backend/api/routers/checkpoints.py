@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Path, Query
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.checkpoint import ReplayRequest, ForkRequest, CheckpointHistoryResponse
@@ -23,10 +25,10 @@ router = APIRouter(prefix="/checkpoints", tags=["checkpoints"])
     detail_msg="获取检查点列表失败: thread_id={thread_id}",
 )
 async def get_input_checkpoints(
-    thread_id: str,
-    limit: int = Query(default=50, ge=1, le=200, description="每页数量"),
-    offset: int = Query(default=0, ge=0, description="偏移量"),
-):
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    limit: Annotated[int, Query(ge=1, le=200, description="每页数量")] = 50,
+    offset: Annotated[int, Query(ge=0, description="偏移量")] = 0,
+) -> CheckpointHistoryResponse:
     """获取对话线程中所有 input 检查点列表。
 
     每次用户发送消息时 LangGraph 自动生成 input 检查点。
@@ -42,7 +44,10 @@ async def get_input_checkpoints(
     log_msg="重放异常 | thread_id={thread_id} | checkpoint_id={body.checkpoint_id}",
     detail_msg="检查点重放失败: thread_id={thread_id}, checkpoint_id={body.checkpoint_id}",
 )
-async def replay_checkpoint(thread_id: str, body: ReplayRequest):
+async def replay_checkpoint(
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    body: ReplayRequest,
+):
     """从指定检查点重放执行。
 
     从该检查点重新执行后续节点，以 SSE 流式返回结果。
@@ -65,7 +70,10 @@ async def replay_checkpoint(thread_id: str, body: ReplayRequest):
     log_msg="分叉异常 | thread_id={thread_id} | checkpoint_id={body.checkpoint_id}",
     detail_msg="检查点分叉失败: thread_id={thread_id}, checkpoint_id={body.checkpoint_id}",
 )
-async def fork_checkpoint(thread_id: str, body: ForkRequest):
+async def fork_checkpoint(
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    body: ForkRequest,
+):
     """从指定检查点分叉执行。
 
     在历史检查点基础上传入新的状态值（如 messages），创建新分支继续执行。

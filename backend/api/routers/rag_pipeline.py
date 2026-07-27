@@ -1,6 +1,8 @@
 """RAG Pipeline 路由 —— Markdown 文档向量化入库、删除、健康检查及配置管理。"""
 
-from fastapi import APIRouter, UploadFile, File, Query
+from typing import Annotated, Any
+
+from fastapi import APIRouter, UploadFile, File, Path, Query
 
 from backend.api.services.rag_service import (
     process_files_by_path,
@@ -47,7 +49,7 @@ router = APIRouter(prefix="/api/rag", tags=["rag-pipeline"])
     log_msg="RAG 处理异常（路径模式） | paths={body.files}",
     detail_msg="RAG 文档处理失败",
 )
-async def process_rag_endpoint(body: RAGProcessRequest):
+async def process_rag_endpoint(body: RAGProcessRequest) -> RAGProcessResponse:
     """通过文件路径处理 .md 文档（JSON body 模式）。"""
     logger.info("POST /api/rag/process | paths=%d | preview_only=%s", len(body.files), body.preview_only)
     return await process_files_by_path(
@@ -64,9 +66,9 @@ async def process_rag_endpoint(body: RAGProcessRequest):
     detail_msg="RAG 文档处理失败",
 )
 async def process_upload_endpoint(
-    files: list[UploadFile] = File(..., description="待处理的 .md 文件，支持批量上传"),
-    preview_only: bool = Query(False, description="仅预览分块而不入库"),
-):
+    files: Annotated[list[UploadFile], File(description="待处理的 .md 文件，支持批量上传")],
+    preview_only: Annotated[bool, Query(description="仅预览分块而不入库")] = False,
+) -> RAGProcessResponse:
     """上传 markdown 文件，完成分割、（可选）入库（multipart 模式）。"""
     logger.info("POST /api/rag/process/upload | files=%d | preview_only=%s", len(files), preview_only)
     return await process_uploaded_files(files=files, preview_only=preview_only)
@@ -78,7 +80,7 @@ async def process_upload_endpoint(
     log_msg="RAG 删除异常 | ids={body.ids}",
     detail_msg="删除文档失败",
 )
-async def delete_rag_endpoint(body: RAGDeleteRequest):
+async def delete_rag_endpoint(body: RAGDeleteRequest) -> RAGDeleteResponse:
     """按 ID 从向量库中删除文档。"""
     logger.info("POST /api/rag/delete | ids=%d", len(body.ids))
     return await delete_documents(ids=body.ids)
@@ -90,7 +92,7 @@ async def delete_rag_endpoint(body: RAGDeleteRequest):
     log_msg="RAG 健康检查异常",
     detail_msg="向量库健康检查失败",
 )
-async def health_rag_endpoint():
+async def health_rag_endpoint() -> RAGHealthResponse:
     """检查向量库健康状态。"""
     logger.info("GET /api/rag/health")
     return await health_check()
@@ -102,7 +104,7 @@ async def health_rag_endpoint():
     log_msg="RAG 配置读取异常",
     detail_msg="RAG 配置读取失败",
 )
-async def get_rag_config_endpoint():
+async def get_rag_config_endpoint() -> dict[str, Any]:
     """读取 rag_config.yaml 完整配置。"""
     logger.info("GET /api/rag/config")
     return await get_rag_config()
@@ -113,7 +115,7 @@ async def get_rag_config_endpoint():
     log_msg="RAG 配置写入异常",
     detail_msg="RAG 配置更新失败",
 )
-async def update_rag_config_endpoint(body: RAGFullConfigModel):
+async def update_rag_config_endpoint(body: RAGFullConfigModel) -> dict[str, Any]:
     """覆写 rag_config.yaml，自动重载运行时配置。"""
     logger.info("PUT /api/rag/config")
     return await update_rag_config(body)
@@ -127,7 +129,7 @@ async def update_rag_config_endpoint(body: RAGFullConfigModel):
     log_msg="列出集合异常",
     detail_msg="获取集合列表失败",
 )
-async def list_collections_endpoint():
+async def list_collections_endpoint() -> CollectionListResponse:
     """列出 ChromaDB 中所有集合。"""
     logger.info("GET /api/rag/collections")
     return await list_collections()
@@ -139,9 +141,9 @@ async def list_collections_endpoint():
     detail_msg="获取集合统计信息失败",
 )
 async def collection_stats_endpoint(
-    collection_name: str,
-    sample_limit: int = Query(5000, ge=100, le=100000, description="统计采样上限"),
-):
+    collection_name: Annotated[str, Path(description="集合名称")],
+    sample_limit: Annotated[int, Query(ge=100, le=100000, description="统计采样上限")] = 5000,
+) -> CollectionStatsResponse:
     """获取指定集合的统计信息（文档数、非空率、平均长度、向量维度、元数据覆盖率）。"""
     logger.info("GET /api/rag/collection/%s/stats | limit=%d", collection_name, sample_limit)
     return await get_collection_stats(collection_name, sample_limit)
@@ -154,10 +156,10 @@ async def collection_stats_endpoint(
     detail_msg="获取文档列表失败",
 )
 async def collection_documents_endpoint(
-    collection_name: str,
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=5, le=500, description="每页条数"),
-):
+    collection_name: Annotated[str, Path(description="集合名称")],
+    page: Annotated[int, Query(ge=1, description="页码")] = 1,
+    page_size: Annotated[int, Query(ge=5, le=500, description="每页条数")] = 20,
+) -> CollectionDocumentsResponse:
     """分页获取集合中的文档（ID、内容、元数据）。"""
     logger.info("GET /api/rag/collection/%s/documents | page=%d | size=%d", collection_name, page, page_size)
     return await get_collection_documents(collection_name, page, page_size)
@@ -169,7 +171,10 @@ async def collection_documents_endpoint(
     log_msg="删除文档异常 | collection={collection_name} | ids={body.ids}",
     detail_msg="删除文档失败",
 )
-async def delete_collection_docs_endpoint(collection_name: str, body: DeleteDocsRequest):
+async def delete_collection_docs_endpoint(
+    collection_name: Annotated[str, Path(description="集合名称")],
+    body: DeleteDocsRequest,
+) -> DeleteDocsResponse:
     """从指定集合中批量删除文档。"""
     logger.info("POST /api/rag/collection/%s/delete-docs | ids=%d", collection_name, len(body.ids))
     return await delete_collection_docs(collection_name, body.ids)
@@ -181,7 +186,9 @@ async def delete_collection_docs_endpoint(collection_name: str, body: DeleteDocs
     log_msg="清空集合异常 | collection={collection_name}",
     detail_msg="清空集合失败",
 )
-async def clear_collection_endpoint(collection_name: str):
+async def clear_collection_endpoint(
+    collection_name: Annotated[str, Path(description="集合名称")],
+) -> ClearCollectionResponse:
     """清空集合中的所有文档。"""
     logger.info("POST /api/rag/collection/%s/clear", collection_name)
     return await clear_collection(collection_name)
@@ -193,7 +200,9 @@ async def clear_collection_endpoint(collection_name: str):
     log_msg="删除集合异常 | collection={collection_name}",
     detail_msg="删除集合失败",
 )
-async def delete_collection_endpoint(collection_name: str):
+async def delete_collection_endpoint(
+    collection_name: Annotated[str, Path(description="集合名称")],
+) -> DeleteCollectionResponse:
     """删除整个集合。"""
     logger.info("DELETE /api/rag/collection/%s", collection_name)
     return await delete_collection(collection_name)

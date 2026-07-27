@@ -22,7 +22,7 @@ Core 层（backend/core/）  → Agent 编译、模型管理、中间件、工�
 - **Agent 编译**：`create_deep_agent` 将 10+ 组件组装为 LangGraph CompiledStateGraph
 - **模型热切换**：运行时切换 DeepSeek / 阿里云 / Ollama / OpenAI，带故障转移
 - **中间件链**：4 层中间件（摘要 → 截断 → 代码解释器 → Rubric 评估）
-- **工具集管理**：记忆工具、RAG 检索、MCP 外部工具、账单分析
+- **工具集管理**：记忆工具、RAG 检索、MCP 外部工具
 - **子智能体**：LangGraph 图定义 + RAG 子智能体工厂；配置管理见 [SubAgent 子代理管理模块](./SubAgent子代理管理模块.md)
 
 ---
@@ -34,51 +34,47 @@ backend/core/
 ├── __init__.py
 ├── main_agent.py                    # 主 Agent 编译入口（init_graph 上下文管理器）
 ├── assembled/                       # 后端与中间件组装
+│   ├── __init__.py
 │   ├── backends.py                  # CompositeBackend 路由表
 │   └── middleware.py                # 中间件链配置
 ├── custom_middleware/               # 自定义中间件
+│   ├── __init__.py
 │   ├── model_switcher.py            # 模型动态切换与故障转移
 │   └── truncate_toolmessage.py      # 工具消息截断
 ├── models/                          # 模型管理层
+│   ├── __init__.py
 │   ├── model_factory.py             # LLM 工厂（4 种模型 + 嵌入 + Reranker）
 │   ├── llm_settings.py              # model_config.yaml 配置加载
 │   ├── env_api_key.py               # API Key 管理（.env.api_key）
 │   └── reranker.py                  # DashScope Reranker 封装
 ├── prompts/                         # 提示词
+│   ├── __init__.py
 │   ├── prompt.py                    # 提示词加载器
 │   └── system_prompt.txt            # 系统提示词正文
 ├── skill_manager/                   # 技能管理
+│   ├── __init__.py
 │   ├── filtered_backend.py          # 技能过滤后端
 │   └── skills_config.yaml           # 技能开关配置
-├── subagent/                        # 子智能体
-│   ├── langgraph_subagent/          # LangGraph 子智能体（账单分析）
-│   │   ├── graph_compile.py         # 图编译
-│   │   ├── nodes.py                 # 节点工厂
-│   │   ├── prompt.py                # 子智能体提示词
-│   │   └── state_config.py          # 状态定义
-│   └── rag_subagent/                # RAG 检索子智能体
-│       └── rag_factory.py           # create_deep_agent 工厂
-└── utils/                           # 工具集
-    ├── __init__.py                  # 工具统一导出
-    ├── retrieval/                   # RAG 检索工具
-    │   ├── retrieve_tool.py         # 检索管道（向量召回 + 重排序）
-    │   └── prompt.py
-    ├── tools/                       # 长期记忆工具
-    │   └── memory_tool.py           # 5 个记忆工具 + MemoryStore 封装
-    ├── mcp/                         # MCP 协议集成
-    │   ├── mcp_tool.py              # MCP 工具加载器
-    │   ├── mcp_server.json          # MCP 服务配置
-    │   ├── fastmcp_search.py        # URL 抓取工具
-    │   └── local_mcp.py             # 本地数学工具
-    └── bill_subagent/               # 账单分析
-        └── billing/
-            ├── analyze_billing.py   # 收支总览
-            ├── analyze_monthly.py   # 月度趋势分析
-            ├── analyze_expense.py   # 支出明细分析
-            ├── analyze_monthly_categories.py  # 分类月度对比
-            ├── calculate.py         # 基础运算（add/multiply/subtract/divide）
-            ├── save_bill.py         # 账单记录保存
-            └── import_csv_to_sqlite.py  # CSV 导入
+├── rag_tool/                        # Agent 工具集（LangChain @tool）
+│   ├── __init__.py                  # 统一导出
+│   ├── retrieve_tool.py             # RAG 检索工具（向量召回 + 重排序）
+│   └── memory.py                    # 5 个记忆工具 + MemoryStore 封装
+├── mcp/                             # MCP 协议集成（FastMCP 服务 + 加载器）
+│   ├── mcp_tool.py                  # MCP 工具加载器（读取 mcp_server.json）
+│   ├── mcp_server.json              # MCP 服务配置
+│   ├── memory_tool.py               # 记忆工具 FastMCP 服务版
+│   ├── retrieve_tool.py             # 检索工具 FastMCP 服务版
+│   ├── fastmcp_search.py            # URL 抓取工具（FastMCP）
+│   └── local_mcp.py                 # 本地数学工具（FastMCP）
+└── subagent/                        # 子智能体
+    ├── __init__.py
+    ├── langgraph_subagent/          # LangGraph 子智能体
+    │   ├── graph_compile.py         # 图编译
+    │   ├── nodes.py                 # 节点工厂
+    │   ├── prompt.py                # 子智能体提示词
+    │   └── state_config.py          # 状态定义
+    └── rag_subagent/                # RAG 检索子智能体
+        └── rag_factory.py           # create_deep_agent 工厂
 ```
 
 ---
@@ -96,7 +92,7 @@ async def init_graph():
         name="index_agent",
         model = get_active_llm(),         # 动态获取当前激活模型
         system_prompt=load_system_prompt(), # 每次重新读取
-        tools=tools_list,                 # 14+ 个工具
+        tools=tools_list,                 # 6+ 个工具（记忆5 + RAG检索1 + MCP动态加载）
         interrupt_on=interrupt_on,        # HITL 中断配置
         backend=backend,                  # CompositeBackend
         middleware=add_middleware,         # 4 层中间件
@@ -117,7 +113,7 @@ async def init_graph():
 | `name` | `"index_agent"` | Agent 标识名 |
 | `model` | `get_active_llm()` | 按 `active_provider` 动态选择 LLM |
 | `system_prompt` | `load_system_prompt()` | 从 `system_prompt.txt` 每次读取（热更新） |
-| `tools` | 14+ 工具 | 记忆(5) + RAG检索(1) + MCP工具 + 账单分析(5) + 基础运算(4) |
+| `tools` | 6+ 工具 | 记忆(5) + RAG检索(1) + MCP工具 |
 | `interrupt_on` | `{}`（当前无配置） | HITL 风险分级中断，例：`{"read_file": {"allowed_decisions": ["approve","reject","edit"]}}` |
 | `backend` | `CompositeBackend` | 多路由文件后端，见下文 |
 | `middleware` | 4 个中间件 | 手动摘要 → 截断 → 代码解释器 → Rubric |
@@ -137,19 +133,29 @@ async def init_graph():
 from backend.core.models.model_factory import get_active_llm
 from backend.core.prompts.prompt import load_system_prompt
 from backend.memory_skill.skill.subagents.scripts.subagent_loader import load_subagents
+from backend.core.mcp.mcp_tool import mcp_tool
+from backend.core.rag_tool import (retriever_row_doc_tool,
+                                    save_memory, delete_memory, search_memory,
+                                    get_memory, list_memory_keys)
 ```
 
 ### 工具列表组装
 
+工具导入路径已从 `utils/` 重构为 `rag_tool/`：
+
 ```python
+# main_agent.py 导入
+from backend.core.rag_tool import retriever_row_doc_tool, save_memory, delete_memory, search_memory, get_memory, list_memory_keys
+from backend.core.mcp.mcp_tool import mcp_tool
+
 tools_list = [
-    save_memory, search_memory, delete_memory, get_memory, list_memory_keys,  # 记忆(5)
-    retriever_row_doc_tool,                                                   # RAG检索(1)
     *mcp_tools,                                                               # MCP外部工具(动态)
-    save_bill, analyze_billing, analyze_monthly,                              # 账单分析(5)
-    analyze_expense, analyze_monthly_categories,
+    retriever_row_doc_tool,                                                   # RAG检索(1)
+    save_memory, delete_memory, search_memory, get_memory, list_memory_keys,  # 记忆(5)
 ]
 ```
+
+> **注意**：`mcp/` 目录下同时存在 `memory_tool.py` 和 `retrieve_tool.py`，是同一套逻辑的 **FastMCP 服务版**（`@mcp.tool()` 装饰器），可独立作为 MCP Server 运行（`mcp.run(transport="stdio")`），而 `rag_tool/` 下的版本使用 LangChain `@tool()` 装饰器，直接注入 Agent 工具列表。
 
 ---
 
@@ -396,29 +402,25 @@ enabled:
 ```
 ---
 
-## 工具集（`utils/`）
+## 工具集（`rag_tool/` & `mcp/`）
 
 ### 工具清单
 
 | 分类 | 工具 | 来源 |
 |------|------|------|
-| RAG 检索 | `retriever_row_doc_tool` | `retrieval/retrieve_tool.py` |
-| 长期记忆 | `save_memory` | `tools/memory_tool.py` |
+| RAG 检索 | `retriever_row_doc_tool` | `rag_tool/retrieve_tool.py` |
+| 长期记忆 | `save_memory` | `rag_tool/memory.py` |
 | | `search_memory` | |
 | | `get_memory` | |
 | | `delete_memory` | |
 | | `list_memory_keys` | |
 | MCP 外部工具 | 动态加载 | `mcp/mcp_tool.py` |
-| 账单分析 | `analyze_billing` | `bill_subagent/billing/` |
-| | `analyze_monthly` | |
-| | `analyze_expense` | |
-| | `analyze_monthly_categories` | |
-| | `save_bill` | |
-| 基础运算 | `add`, `multiply`, `subtract`, `divide` | `bill_subagent/billing/calculate.py` |
+
+> **两套工具说明**：`rag_tool/` 下的工具使用 LangChain `@tool()` 装饰器，直接注入 Agent；`mcp/` 下同时存在 `memory_tool.py` 和 `retrieve_tool.py`，是对应逻辑的 **FastMCP 服务版**（`@mcp.tool()` 装饰器），可独立以 `mcp.run(transport="stdio")` 启动为 MCP Server。
 
 ---
 
-### 1. RAG 检索工具（`retrieval/retrieve_tool.py`）
+### 1. RAG 检索工具（`rag_tool/retrieve_tool.py`）
 
 `retriever_row_doc_tool` 是 Agent 进行知识库检索的唯一入口。
 
@@ -451,7 +453,7 @@ enabled:
 
 ---
 
-### 2. 长期记忆工具（`tools/memory_tool.py`）
+### 2. 长期记忆工具（`rag_tool/memory.py`）
 
 独立的记忆向量存储，与 RAG 文档库分离。
 
@@ -525,46 +527,16 @@ enabled:
 
 基于 FastMCP 的本地 MCP 服务，提供 `add(a, b)` 和 `multiply(a, b)` 工具，通过 `stdio` 传输运行。
 
----
+#### FastMCP 服务版工具
 
-### 4. 账单分析工具（`bill_subagent/billing/`）
+`mcp/` 目录下同时存在以下 FastMCP 服务版文件，与 `rag_tool/` 中的 LangChain 版逻辑对应，可独立作为 MCP Server 运行：
 
-#### 分析工具（4 个）
+| 文件 | FastMCP 服务名 | 对应 rag_tool/ 版本 |
+|------|---------------|---------------------|
+| `memory_tool.py` | `"Memory"` | `rag_tool/memory.py`（5 个记忆工具） |
+| `retrieve_tool.py` | `"Retrieval"` | `rag_tool/retrieve_tool.py`（RAG 检索） |
 
-| 工具 | 功能 | 支持参数 |
-|------|------|----------|
-| `analyze_billing` | 收支总览 + 分类排名 + 平台分布 | `start_date`, `end_date` |
-| `analyze_monthly` | 三层逐月：收支 + 刚性固定 + 效率 + 弹性 | `start_date`, `end_date` |
-| `analyze_expense` | 支出层级 + item 明细 + 消费频次 + 食品追踪 | `start_date`, `end_date` |
-| `analyze_monthly_categories` | 逐月各类别排名 + 刚性/弹性分布 | `start_date`, `end_date` |
-
-#### 数据管理工具（2 个）
-
-| 工具 | 功能 |
-|------|------|
-| `save_bill` | 保存单条消费记录到 `billing.db` SQLite 数据库 |
-| `import_csv_to_sqlite` | 将微信/支付宝 CSV 账单导入数据库 |
-
-#### 基础运算工具（4 个）
-
-| 工具 | 功能 | 特性 |
-|------|------|------|
-| `add(*args)` | 多个数求和 | `sum(args)` |
-| `multiply(*args)` | 多个数连乘 | 空参数返回 0 |
-| `subtract(*args)` | 从左到右连减 | 至少 2 个参数 |
-| `divide(*args)` | 从左到右连除 | 至少 2 个参数，阻止零除 |
-
-#### 数据模型（`save_bill`）
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `item_name` | `str` | 消费项目名称 |
-| `category` | `str` | 预定义分类（食品/交通/购物 等 12 类） |
-| `amount` | `float` | 金额（支出负数，收入正数） |
-| `date` | `str` | 格式 "YYYY-MM-DD" |
-| `platform` | `str` | 交易平台 |
-| `year_month` | `str` | 格式 "YYYY-MM" |
-| `expense_type` | `str` | 弹性可选 / 刚性固定 / 刚性必要 |
+两版的核心检索/存储逻辑相同，区别仅在于装饰器（`@mcp.tool()` vs `@tool()`）和独立启动能力。
 
 ---
 
@@ -612,7 +584,7 @@ Agent 每次调用 LLM 时，中间件按注册顺序依次执行：
 
 - **LLM 工厂函数**：每次调用创建新实例，支持热更新
 - **静态实例**：用于中间件等不需要热更新的场景（如 `llm_deepseek`）
-- **模块级单例**：`MemoryStore(memory_store)`, `_markitdown`, `_vectorstore`
+- **模块级单例**：`memory_store`（MemoryStore 实例）, `_vectorstore`（Chroma 实例）
 
 ### 5. StateGraph + DeltaChannel 优化
 

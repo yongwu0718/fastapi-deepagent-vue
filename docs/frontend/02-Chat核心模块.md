@@ -57,43 +57,71 @@ useChatController(threadId, callbacks)
   └── useCheckpoints(threadId)  → 检查点池管理
 ```
 
+### 回调接口
+
+```typescript
+interface ChatControllerCallbacks {
+  createThread: () => void
+  chatStarted: (started: boolean) => void
+  updateTitle: (threadId: string, title: string) => void
+}
+```
+
+注意：侧边栏/文件面板/右侧栏的切换事件由 `ChatView.vue` 直接通过 emit 传递，不经过 controller。
+
 ### 核心职责
 
 | 职责 | 实现方式 |
 |------|----------|
-| **消息持久化** | `watch(messages)` → `cacheThreadMessages()` 存入 localStorage |
-| **线程切换** | `watch(threadId)` → 取消请求 → 清空状态 → `loadThreadHistory()` |
-| **自动标题** | 取第一条 user 消息前 50 字符作为线程标题 |
+| **消息持久化** | `watch(messages)` → `cacheThreadMessages()` 存入 localStorage → 同时异步进入 `checkpoints.loadCheckpoints()` 预加载 inputs 池 |
+| **线程切换** | `watch(threadId)` → 取消请求 → 清空流式状态 → `checkpoints.reset()` → `loadThreadHistory()` |
+| **刷新恢复** | 历史加载后，优先用 ID（`_msgId`）绑定检查点；无 ID 时按内容匹配兜底 → 补绑 `_leafCheckpointId` 到最后的 assistant 消息 |
+| **自动标题** | 取第一条 user 消息前 50 字符作为线程标题（`titleUpdated` 标记防止重复） |
 | **发送消息** | `sendMessage()` → 无 threadId 先 `createThread()` → `streamSend()` |
-| **重试（Retry）** | `retryUserMessage(index)` → 使用 `_parentCheckpointId` 调用 `replayCheckpoint()` |
-| **分支（Fork）** | 三阶段：`startForkEdit()` → `submitForkEdit()` → `forkFromCheckpoint()` |
-| **分支切换（Switch）** | `switchToBranch(targetLeafCid)` → 加载分支完整历史 |
-| **branchMap** | computed，按 `parentCheckpointId` 去重计算兄弟分支 |
+| **重试（Retry）** | `retryUserMessage(index)` → 优先用 `_parentCheckpointId`（父检查点）+ 注入 user 消息触发重新生成；父为 null 时回退到 `_checkpointId` |
+| **分支（Fork）** | 三阶段：`startForkEdit()` → 编辑草稿 → `submitForkEdit()` → 用 `_parentCheckpointId` 调用 `forkFromCheckpoint()`；内容未变则拦截 |
+| **分支切换（Switch）** | `switchToBranch(targetLeafCid)` → 加载目标分支完整历史 → 补绑检查点 → 绑定叶子 → 持久化到 localStorage |
+| **branchMap** | computed，按 `parentCheckpointId` 去重：同一 parent 下多条连续 user 消息只在最后一条显示分支按钮 |
 
 ### 暴露的公开接口
 
 ```typescript
-const ctrl = useChatController(threadId, {
-  onCreateThread: () => void,
-  onChatStarted: (tid: string, title: string) => void,
-  onUpdateTitle: (tid: string, title: string) => void,
-  onToggleSidebar: () => void,
-  onToggleFilePanel: () => void,
-  onToggleRightSidebar: () => void,
-})
+const ctrl = useChatController(threadId, callbacks)
 
-// 返回
-ctrl.state          // 响应式状态
-ctrl.sendMessage()  // 发送消息
-ctrl.cancelRequest()// 取消当前请求
-ctrl.retryUserMessage(index) // 重试
+// 返回 —— 直接暴露原始响应式字段和函数，不需要 .state 中间层
+ctrl.messages          // Ref<Message[]>
+ctrl.loading           // Ref<boolean>
+ctrl.historyLoading    // Ref<boolean>
+ctrl.error             // Ref<string | null>
+ctrl.localError         // Ref<string | null>（可关闭的错误）
+ctrl.clearError()       // 清除本地错误
+ctrl.streamingContent  // Ref<string>
+ctrl.streamingReasoning// Ref<string>
+ctrl.firstTokenReceived// Ref<boolean>
+ctrl.showInterrupt     // Ref<boolean>
+ctrl.interruptData     // Ref<unknown>
+// 操作
+ctrl.sendMessage(content, contentBlocks?, rawFiles?, rubric?)
+ctrl.cancelRequest()    // 取消当前请求 + 打包未完成内容
+ctrl.retryUserMessage(index) // 重试指定消息
 ctrl.startForkEdit(index)    // 开始分支编辑
-ctrl.submitForkEdit(index)   // 提交分支编辑
 ctrl.cancelForkEdit()        // 取消分支编辑
-ctrl.switchToBranch(leafCid) // 切换分支
+ctrl.submitForkEdit({index, content}) // 提交分支编辑
+ctrl.switchToBranch(msgIndex, leafCid) // 切换分支
 ctrl.resumeChat(decisions)   // 恢复中断对话
-ctrl.loadThreadHistory(tid)  // 加载历史
-ctrl.moduleState              // 暴露给 RightSidebar 的状态
+// 分支状态
+ctrl.retryingMessageIndex  // 当前重试中的消息索引
+ctrl.forkingMessageIndex   // 当前分支中的消息索引
+ctrl.forkEditingIndex      // 正在编辑的 fork 消息索引
+ctrl.forkEditingDraft      // fork 编辑草稿
+ctrl.branchSwitchingIndex  // 当前分支切换中的消息索引
+ctrl.branchMap              // Map<msgIndex, { branches, currentIndex }>
+ctrl.persistBranchLeaf(leafCid)
+ctrl.loadBranchLeaf() → string | null
+// 滚动
+ctrl.showScrollButton      // 是否显示滚动到底部按钮
+ctrl.handleScrollToBottom(messagesRef)
+ctrl.onMessagesScroll(event)
 ```
 
 ---
@@ -133,6 +161,15 @@ DO_NOT_RENDER_ID_PREFIX = 'do-not-render-'
 
 ## useChatStream（SSE 流式通信）
 
+### 构造函数
+
+```typescript
+useChatStream(state, threadId, options?)
+// options: { onReplayStart?: () => void, onReplayEnd?: () => void }
+```
+
+`onReplayStart`/`onReplayEnd` 用于重试/分支操作的开始和结束回调（目前 reserved，未在 controller 层使用）。
+
 ### 公开方法
 
 | 方法 | 说明 | 后端端点 |
@@ -140,7 +177,7 @@ DO_NOT_RENDER_ID_PREFIX = 'do-not-render-'
 | `sendMessage()` | 发送用户消息 | `/chat/{thread_id}/stream` 或 `.../with-files/stream` |
 | `cancelRequest()` | 取消请求 + 打包未完成内容 | — |
 | `resumeChat()` | 恢复 HITL 中断 | `/chat/{thread_id}/resume` |
-| `replayCheckpoint()` | 从检查点重放（重试） | `/checkpoints/{thread_id}/replay` |
+| `replayCheckpoint()` | 从检查点重放（重试），可选注入 messages | `/checkpoints/{thread_id}/replay` |
 | `forkFromCheckpoint()` | 从检查点分叉（分支） | `/checkpoints/{thread_id}/fork` |
 
 ### 关键实现细节
@@ -151,13 +188,16 @@ DO_NOT_RENDER_ID_PREFIX = 'do-not-render-'
 sendMessage()
   → 构建消息（user role + contentBlocks + rawFiles）
   → 查找最后 assistant 消息的 _leafCheckpointId
-  → 有附件 → doSseFormDataRequest (multipart)
-  → 无附件 → doSseRequest (JSON, body 含 checkpoint_id + rubric)
+  → resetStreamingState(state) + 创建 AbortController
+  → 有附件 → doSseFormDataRequest (multipart, body 含 messages + checkpoint_id)
+  → 无附件 → doSseRequest (JSON, body 含 messages + checkpoint_id + rubric)
 ```
 
-**取消请求时**：不仅 `abort()`，还会将 `streamingContent` + `streamingReasoning` + `pendingToolCalls` 打包为一条 assistant 消息，保留已有内容。
+**取消请求时**：不仅 `abort()`，还会将 `streamingContent` + `streamingReasoning` + `pendingToolCalls` 打包为一条 assistant 消息（含 `interrupt` 标记），然后调用 `applyPendingLeaf()` 补绑 LEAF 检查点。
 
-**重放/分叉公共逻辑** (`enterReplayMode`)：校验 threadId → 设置 loading → 重置流式状态。
+**恢复中断时** (`resumeChat`)：只设置 `loading=true`，保持 `showInterrupt=true`（等待首个 SSE 数据到达时才关闭），手动清除流式状态字段（不调用 `resetStreamingState`）。通过内置的 `client.sse.post()` 直接发起 SSE 请求。
+
+**重放/分叉公共逻辑** (`enterReplayMode`)：校验 threadId → 检查 loading → 设 `isReplayMode=true` → 调 `onReplayStart` → 重置流式状态 → 创建 AbortController。
 
 ---
 
@@ -183,26 +223,27 @@ doSseFormDataRequest(url, formData, onSseEvent): AsyncGenerator
 
 | 事件 | 处理逻辑 |
 |------|----------|
-| **`checkpoint`** | 解析 `{checkpoint_id, parent_checkpoint_id, kind}`。`kind='input'` 绑定到 user 消息；`kind='leaf'` 绑定到 assistant 消息（处理 LEAF 先于 done 到达的时序问题） |
-| **`reasoning`** | 追加到 `streamingReasoning` |
+| **`checkpoint`** | 解析 `{checkpoint_id, parent_checkpoint_id, kind}`。`kind='input'` 绑定到最近的 user 消息（`_checkpointId` + `_parentCheckpointId`）；`kind='leaf'` 先尝试立即绑定到最新 assistant，同时暂存 `pendingLeafCheckpointId` 以备 done 后补绑 |
+| **`reasoning`** | 追加到 `streamingReasoning`，首个非 checkpoint chunk 触发 `firstTokenReceived=true` |
 | **`text`** | 追加到 `streamingContent` |
-| **`tool_call`** | 按 `tool_call_id` 存入 `pendingToolCalls` Map，参数经 `parseToolArgs()` 安全解析 |
-| **`tool_result`** | 更新对应 tool_call 的 `result` 字段 |
-| **`interrupt`** | 设 `showInterrupt=true`，解析 `interruptData` |
-| **`user`** | 忽略（不处理） |
-| **`rubric`** | Loop Engineering 评估事件：根据 `type`（`rubric_evaluation_start/end`）和 `result`（`satisfied/needs_revision/failed/max_iterations_reached/grader_error`）显示 toast |
-| **`done`** | 将流式内容打包为 assistant 消息 → `applyPendingLeaf()` 补绑 LEAF → 清理状态 |
-| **`error`** | 设置 error 状态，清理 |
+| **`tool_call`** | 按 `tool_call_id` 存入 `pendingToolCalls` Map，参数经 `parseToolArgs()` 安全解析；每次更新后同步到右侧栏（`syncStreamingTools()`） |
+| **`tool_result`** | 更新对应 tool_call 的 `result` 字段，无对应项时创建新条目（id 缺失时自动生成 `tool_result_{timestamp}`） |
+| **`interrupt`** | 设 `loading=false`、`showInterrupt=true`，解析 `interruptData`（优先 JSON 解析，失败回退原始字符串） |
+| **`user`** | 直接忽略（return） |
+| **`rubric`** | Loop Engineering 评估事件：根据 `type`（`rubric_evaluation_start/end`）和 `result`（`satisfied/needs_revision/failed/max_iterations_reached/grader_error`）显示不同级别 toast |
+| **`done`** | 将 `streamingContent` + `streamingReasoning` + `pendingToolCalls` 打包为 assistant 消息 → `applyPendingLeaf()` 补绑 LEAF → 清理流式状态 → `isReplayMode=false` |
+| **`error`** | 设置 error 状态，清理流式状态 → `isReplayMode=false` → `onReplayEnd?.()` |
 
 ### parseToolArgs()
 
 ```typescript
 // 安全解析工具参数，容错处理
-parseToolArgs(args)
-  → JSON.parse 成功          → 原样返回
-  → JSON.parse 失败 + 数组    → { items: [...] }
-  → JSON.parse 失败 + 标量    → { value: scalar }
-  → 完全失败                  → { raw: rawString }
+parseToolArgs(rawArgs, fallback?)
+  → rawArgs 为空              → fallback || {}
+  → JSON.parse 成功 + object   → 原样返回（非数组 object）
+  → JSON.parse 成功 + array    → { items: [...] }
+  → JSON.parse 成功 + 标量     → { value: scalar }
+  → JSON.parse 失败            → { raw: rawArgs }
 ```
 
 ### applyPendingLeaf()
@@ -234,6 +275,27 @@ interruptData = null
 GET /checkpoints/{thread_id}/inputs?limit=200&offset=0
 ```
 
+### 检查点信息提取
+
+| 方法 | 说明 |
+|------|------|
+| `extractCheckpointId(summary)` | 优先通过 `config.configurable.checkpoint_id` 获取；失败时用正则 `/checkpoint_id"\s*:\s*"([^"]+)"/` 兜底 |
+| `extractCheckpointNs(summary)` | 从 `config.configurable.checkpoint_ns` 提取，无值返回空字符串 |
+
+### 绑定策略（双级优先级）
+
+**一级：ID 精确匹配**（权威 O(1) 绑定）
+`buildIdMap()` 构建 `trigger_message_id → {checkpointId, parentCheckpointId}` 字典。通过消息的 `_msgId`（LangChain 消息 ID）直接查找，跳过内容匹配。
+
+**二级：内容模糊匹配**（旧消息兜底）
+`matchByContent()` 仅在没有 `_msgId` 的旧消息时使用，四级优先级：
+1. normalize 后**完全相等**
+2. 消息以 **input_preview** 开头（preview 被截断）
+3. **input_preview** 以消息开头（消息被截断）
+4. 双向包含兜底
+
+`resolveCheckpoint(msgId, userMessage)` 综合以上两级：先查 idMap，未命中时回退内容匹配。
+
 ### 核心概念
 
 ```
@@ -247,21 +309,15 @@ _parentCheckpointId  │ _parentCheckpointId │
 | 字段 | 绑定消息 | 用途 |
 |------|----------|------|
 | `_checkpointId` | user 消息 | 用于 retry（从该检查点重放） |
-| `_parentCheckpointId` | user 消息 | 用于 fork（从父状态分叉） |
+| `_parentCheckpointId` | user 消息 | 用于 fork（从父状态分叉）；根 input 的父检查点为 `null`，也绑定以标识无前驱 |
 | `_leafCheckpointId` | assistant 消息 | 用于 sendMessage（确定当前分支继续点） |
-
-### 匹配策略
-
-`matchCheckpointByContent()` 按四级优先级匹配 user 消息到检查点：
-
-1. **完全相等**（normalize 后）
-2. 消息以 **preview** 开头（preview 为前 80 字符截断）
-3. **preview** 以消息开头（消息被截断）
-4. 双向包含兜底
 
 ### 兄弟分支
 
-`getSiblingBranches()` 按 `parent_checkpoint_id` 分组，找出同 parent 下的所有 input 检查点（排除 fork 来源），排序后返回 `SiblingBranch[]`。仅当兄弟数 > 1 时 UI 才显示分支切换器。
+`getSiblingBranches(parentCheckpointId)` 按 `parent_checkpoint_id` 分组：
+- 过滤掉 `source === 'fork'` 的检查点（排除 fork 来源）
+- 排序：`source === 'input'` 的优先排在前面
+- 仅当兄弟数 > 1 时返回列表，UI 才显示分支切换器
 
 ### 分支叶子持久化
 
@@ -274,6 +330,39 @@ SSE 流结束后自动持久化，线程切换时恢复，确保刷新后回到�
 ### branchMap（computed）
 
 按 `parentCheckpointId` 去重：同一 parent 下的多条连续 user 消息，只在最后一条（实际分叉点）显示分支按钮。前面的消息是顺序执行链。
+
+### 重置
+
+`reset()` 清空 checkpoints、loaded、lastMatched、error 状态，在线程切换时调用。
+
+---
+
+## useContentNav（消息大纲导航）
+
+### 架构
+
+采用**模块级共享状态**模式，避免 prop drilling：
+
+```typescript
+// 模块级 shallowRef，供外部组件（如 RightSidebar）直接读取
+const _outlineItems = shallowRef<readonly NavItem[]>([])
+
+// 导出读取钩子
+export function useOutlineItems() {
+  return { outlineItems: _outlineItems }
+}
+```
+
+`useContentNav(messages, streamingContent)` 内部通过 `watch(navItems, ...)` 将 computed 结果同步到 `_outlineItems`。
+
+### 功能
+
+| 功能 | 说明 |
+|------|------|
+| **大纲提取** | computed 从 messages 中提取所有 role='user' 的消息，生成 `{ messageIndex, preview, anchorId }` 条目 |
+| **内容截断** | 消息内容超过 40 字符截断为前 37 字符 + "…" |
+| **导航跳转** | `scrollToNavItem(anchorId)` → `document.getElementById` + `scrollIntoView` |
+| **共享状态** | 通过 `useOutlineItems()` 同步到模块级 `_outlineItems` |
 
 ---
 
@@ -303,12 +392,17 @@ done 事件
 
 ### useToolMessages 共享状态
 
-| 状态 | 说明 |
+| 状态/方法 | 说明 |
 |------|------|
-| `_toolCallGroups` | 按消息分组的 assistant toolCalls |
-| `_toolMessages` | tool 角色消息条目（就近匹配） |
-| `_streamingToolCalls` | 流式期间的实时工具调用 |
-| `_shouldAutoOpenSidebar` | 流式工具调用到来时自动触发右侧栏展开 |
+| `toolCallGroups` | 按消息分组的 assistant toolCalls（模块级 `ref`，跨组件共享） |
+| `toolMessages` | tool 角色消息条目列表（就近匹配 assistant toolCalls 的 name/id） |
+| `streamingToolCalls` | 流式期间的实时工具调用列表 |
+| `toolCallCount` | 工具调用总数（assistant toolCalls + tool 消息 + 流式） |
+| `shouldAutoOpenSidebar` | 流式工具调用到来时自动设为 `true`（watcher 监听 `streamingToolCalls`） |
+| `syncToolCalls(messages)` | 从完整消息列表中提取 toolCalls 分组和 tool 消息条目 |
+| `setStreamingToolCalls(calls)` | SSE 收到 tool_call/tool_result 时更新实时列表 |
+| `clearStreamingToolCalls()` | 流结束时清空实时列表 |
+| `consumeAutoOpenSidebar()` | 消费自动展开信号（调用后重置为 false，返回值指示是否应展开） |
 
 ---
 
@@ -318,20 +412,20 @@ done 事件
 
 ```
 后端 interrupt chunk
-  → sseChunkHandler: showInterrupt=true, 解析 interruptData
+  → sseChunkHandler: loading=false, showInterrupt=true, 解析 interruptData
   → ChatView.parsedInterrupt: HITLRequest
-  → 渲染 ApprovalCard.vue 覆盖层
+  → 渲染 ApprovalCard.vue 覆盖层（overlay + backdrop-filter 模糊背景）
 ```
 
 ### ApprovalCard 功能
 
 - 展示 `action_requests` 列表（每项含 name、description、args）
 - 三种决策：**批准 (approve)** / **拒绝 (reject)** / **编辑 (edit)**
-- `review_configs` 可限制可选决策
-- 拒绝时可填写原因；编辑时可修改 JSON 参数
+- `review_configs` 通过 `allowed_decisions` 限制每项可选决策
+- 拒绝时可填写原因（`message`）；编辑时可修改 JSON 参数（`edited_action`）
 - "全部批准"快捷按钮
-- 提交 → `ctrl.resumeChat(HITLResponse)` → `POST /chat/{thread_id}/resume`
-- 取消 → 直接关闭 `showInterrupt`
+- 提交 → `ctrl.resumeChat(HITLResponse)` → `POST /chat/{thread_id}/resume`（保持 `showInterrupt=true` 直到首个 SSE 数据到达）
+- 取消 → 直接关闭 `showInterrupt=false`，`interruptData=null`
 
 ---
 
@@ -365,17 +459,21 @@ done 事件
 
 顶层视图，组合所有子组件，桥接 props/emit 到 controller：
 
+**Props**：`threadId`、`chatStarted`、`sidebarOpen`、`filePanelOpen`、`rightSidebarOpen`
+
+**Emits**：`createThread`、`toggleSidebar`、`toggleFilePanel`、`toggleRightSidebar`、`chatStarted`、`updateTitle`
+
 ```html
 <ChatHeader ... />
 <ChatMessages ... />
 <ChatInput ... />
-<ApprovalCard v-if="showInterrupt" ... />
+<ApprovalCard v-if="showInterrupt && parsedInterrupt" ... />
 <div class="chat-resize-handle" />  <!-- 拖拽缩放手柄，仅消息区可见 -->
 ```
 
 **computed**：
-- `parsedInterrupt`：将 `interruptData` 解析为 `HITLRequest`
-- `contentNav`：消息大纲（共享到 RightSidebar）
+- `parsedInterrupt`：将 `interruptData` 解析为 `HITLRequest`，失败返回 null
+- 大纲通过 `useContentNav(ctrl.messages, ctrl.streamingContent)` 同步到模块级共享状态（供 RightSidebar 读取）
 
 **对话宽度自由缩放**：
 
@@ -394,35 +492,57 @@ ChatView 通过注入 CSS 变量 `--chat-max-width` 控制消息列表和输入�
 ### ChatHeader.vue
 
 双模式：
-- **空白状态**：仅工具栏按钮（侧边栏切换、文件面板切换、设置）
-- **聊天中**：完整导航栏 + AgentLogo + 新建对话按钮，始终保持全宽
+- **空白状态**：侧边栏切换、文件面板切换、**RAG 向量库管理**、设置、右侧详情面板切换
+- **聊天中**：完整导航栏 + AgentLogo + "Agent Chat" 标题（点击可新建对话）+ 新建对话按钮（+ 图标），始终保持全宽
 
 ### ChatInput.vue
 
+**Props**：仅接收 `loading: boolean`
+
+**Emits**：`send(content, contentBlocks?, rawFiles?, rubric?)`、`cancel()`
+
 输入框组件，包含：
-- 文件上传（图片/PDF/DOCX）
-- **Loop 模式**：点击左下角"Loop"按钮展开 rubric 条件输入框
-- 拖入文件路径支持
-- 发送和取消按钮
+- 文件上传（图片 JPEG/PNG/GIF/WebP + PDF/DOCX），通过 `useFileUpload()` composable 管理
+- **Loop 模式**：点击左下角"Loop"按钮展开 rubric 条件输入框（最多 10 轮迭代评估）
+- 文件拖入（`dragOver` 遮罩提示）
+- 文件路径拖入（从右侧文件浏览器拖拽，在光标处插入路径文本）
+- 发送（📤）和停止（⏹ 带旋转动画）按钮；Enter 发送，Shift+Enter 换行
+- **ContentBlocksPreview** 文件预览组件（可移除单个附件）
 - 宽度通过 `var(--chat-max-width, 48rem)` 与消息列表同步，随拖拽缩放联动
 
 ### ChatReason.vue
 
+**Props**：`reasoning: string`、`isStreaming: boolean`
+
 可折叠的推理过程展示：
-- 流式中有 spinner 动画
-- 完成后显示字符数和折叠/展开按钮
+- 流式中显示 spinner 动画 + "正在思考." 文本
+- 完成后显示 "思考过程（N 字符）" + 💭 图标
+- ▶ 箭头旋转动画（展开时 90°），紫色左边框，等宽字体 pre 显示
+- 最大高度 300px 可滚动
 
 ### ChatMessages.vue
 
 消息列表渲染核心：
-- 过滤 tool 角色和不渲染前缀的消息
-- 长消息折叠（500 字符阈值）
-- 复制、重试、分支按钮
-- 分支切换器（多分支导航）
-- Fork 内联编辑器
+
+**显示层处理**：
+- 过滤：跳过 `DO_NOT_RENDER_ID_PREFIX` 前缀、tool 角色消息
+- 合并：`mergeConsecutiveReasoningMessages(messages, skipTool=true)` 将连续纯推理 assistant 消息合并为一条（不影响原始 messages 索引用于 retry/fork）
+
+**功能**：
+- 长消息折叠（500 字符阈值，展开/收起按钮）
+- 复制消息（`navigator.clipboard.writeText`，2 秒绿色反馈）
+- 重试按钮（🔄 重试）
+- 分支按钮（🌿 分支）
+- Fork 内联编辑器（textarea 编辑 → ✅ 创建分支 / ✖ 取消）
+- 分支切换器（◀ 分支 N/M ▶）
+- 多模态内容块展示（图片 base64 渲染 / 文件附件图标）
+- 中断提示（无审批负载时显示"对话已中断"）
 - 空状态欢迎页
 - 宽度通过 `var(--chat-max-width, 48rem)` 居中，随拖拽缩放联动
 - assistant 消息通过共享组件 `<Markdown>` 渲染（支持 Mermaid 图表、代码块复制）
+
+**Props**：接收 controller 的所有响应式状态（messages、streaming、重试/分支/编辑状态、branchMap 等），通过 emit 向上传递用户操作。
+**defineExpose**：暴露 `scrollToBottom()` 供父组件调用。
 
 ---
 
@@ -489,7 +609,21 @@ hover 代码块右上角「复制」按钮 → `navigator.clipboard.writeText()`
 
 ## 事件通信总结
 
-### Pose 事件（Vue emit）
+### Props / Emits 流转
+
+```
+ChatView.vue (props: threadId, chatStarted, sidebarOpen, filePanelOpen, rightSidebarOpen)
+  ├── ChatHeader.vue ← props: hasMessages, loading, sidebarOpen, filePanelOpen, rightSidebarOpen
+  │     → emit: toggleSidebar, toggleFilePanel, toggleRightSidebar, createThread
+  ├── ChatMessages.vue ← props: messages + 所有 streaming/重试/分支/编辑状态
+  │     → emit: retry(index), forkEdit(index), forkCancel(), forkSubmit({index, content}), switchBranch(msgIndex, leafCid)
+  ├── ChatInput.vue ← props: loading
+  │     → emit: send(content, contentBlocks?, rawFiles?, rubric?), cancel()
+  └── ApprovalCard.vue ← props: actionRequests, reviewConfigs, loading
+        → emit: respond(HITLResponse), cancel()
+```
+
+### Vue emit 事件表
 
 | 来源 | 事件 | 处理方 |
 |------|------|--------|
@@ -497,7 +631,10 @@ hover 代码块右上角「复制」按钮 → `navigator.clipboard.writeText()`
 | `ChatInput` | `cancel` | `ChatView` → `ctrl.cancelRequest()` |
 | `ChatMessages` | `retry(index)` | `ChatView` → `ctrl.retryUserMessage()` |
 | `ChatMessages` | `forkEdit(index)` | `ChatView` → `ctrl.startForkEdit()` |
+| `ChatMessages` | `forkCancel()` | `ChatView` → `ctrl.cancelForkEdit()` |
 | `ChatMessages` | `forkSubmit({index, content})` | `ChatView` → `ctrl.submitForkEdit()` |
 | `ChatMessages` | `switchBranch(msgIndex, leafCid)` | `ChatView` → `ctrl.switchToBranch()` |
 | `ApprovalCard` | `respond(HITLResponse)` | `ChatView` → `ctrl.resumeChat()` |
-| `ChatHeader` | 侧边栏/面板切换 | `ChatView` → emit 到 `ChatLayout` |
+| `ApprovalCard` | `cancel` | `ChatView` → `ctrl.showInterrupt=false` |
+| `ChatHeader` | `toggleSidebar / toggleFilePanel / toggleRightSidebar` | `ChatView` → emit 到 `ChatLayout` |
+| `ChatHeader` | `createThread` | `ChatView` → emit 到 `ChatLayout` |

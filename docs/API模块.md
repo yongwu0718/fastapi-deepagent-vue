@@ -19,7 +19,7 @@ Utils / SQL（工具/数据层）  →  流式处理、文件提取、数据库�
 核心职责：
 - **路由分发**：7 组路由模块，覆盖对话、线程、检查点、文件、RAG、设置、记忆与技能
 - **数据校验**：基于 Pydantic Schema 的请求/响应模型
-- **SSE 流式响应**：支持 9 种事件类型的实时推送
+- **SSE 流式响应**：支持 10 种事件类型的实时推送
 - **统一错误处理**：装饰器模式 + 全局异常处理器
 
 ---
@@ -44,7 +44,7 @@ backend/api/
 │   ├── interrupt.py                  # 中断恢复模型
 │   ├── error.py                      # 统一错误响应
 │   ├── files.py                      # 文件管理模型
-│   ├── rag_pipeline.py               # RAG 管道模型
+│   ├── rag_pipeline.py               # RAG 管道模型（含 ChromaDB 数据浏览）
 │   └── settings.py                   # 设置模型
 ├── services/                         # 业务服务层（9 个模块）
 │   ├── chat_service.py               # 对话服务
@@ -59,7 +59,7 @@ backend/api/
 │   ├── stream.py                     # SSE 流处理器
 │   ├── error_handlers.py             # 全局异常处理器 & 端点装饰器
 │   ├── exceptions.py                 # 错误码枚举 & 自定义异常类
-│   ├── file_handler.py               # PDF/DOCX 文本提取
+│   ├── file_handler.py               # PDF/DOCX 文本提取 & 图片压缩/转换
 │   ├── message2json.py               # 消息序列化
 │   └── dict2json.py                  # 字典/消息转换
 └── sql/                              # SQL 操作
@@ -137,8 +137,8 @@ Files 路由和 Memory & Skill 路由共享相同的操作模式，区别仅在�
 | `POST` | `/chat/{thread_id}` | 非流式聊天，返回完整响应 |
 | `POST` | `/chat/{thread_id}/stream` | 流式聊天（SSE），支持 `checkpoint_id` / `checkpoint_ns` 恢复和 `rubric` 条件驱动循环 |
 | `POST` | `/chat/{thread_id}/resume` | 恢复中断的对话，传入用户审批决策后以 SSE 流式返回 |
-| `POST` | `/chat/{thread_id}/with-files` | 非流式聊天（支持上传 PDF / DOCX 附件） |
-| `POST` | `/chat/{thread_id}/with-files/stream` | 流式聊天（支持上传 PDF / DOCX 附件） |
+| `POST` | `/chat/{thread_id}/with-files` | 非流式聊天（支持上传 PDF / DOCX / 图片附件） |
+| `POST` | `/chat/{thread_id}/with-files/stream` | 流式聊天（支持上传 PDF / DOCX / 图片附件） |
 
 **ChatRequest 请求体**：
 
@@ -157,7 +157,7 @@ Files 路由和 Memory & Skill 路由共享相同的操作模式，区别仅在�
 
 **带文件附件端点**使用 `multipart/form-data`：
 - `messages`：JSON 字符串，格式 `{"messages": [{"role":"user","content":"..."}]}`
-- `files`：PDF / DOCX 文件列表
+- `files`：PDF / DOCX / 图片（.jpg/.png/.gif/.webp）文件列表。图片经压缩后转为 base64 data URL 供多模态模型直接处理
 
 ---
 
@@ -199,7 +199,7 @@ Files 路由和 Memory & Skill 路由共享相同的操作模式，区别仅在�
 | `limit` | `int` | 50 | 每页数量（1-200） |
 | `offset` | `int` | 0 | 偏移量 |
 
-**CheckpointSummary 响应字段**：
+**CheckpointSummary 响应字段**（由 `CheckpointHistoryResponse` 包装，含 `thread_id` + `checkpoints` 列表）：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -209,16 +209,36 @@ Files 路由和 Memory & Skill 路由共享相同的操作模式，区别仅在�
 | `parent_checkpoint_id` | `str` | 父检查点 ID（根节点为 None） |
 | `source` | `str` | 检查点来源：input / loop / fork |
 | `leaf_checkpoint_id` | `str` | 该 input 所在分支的叶子检查点 ID |
+| `trigger_message_id` | `str` | 触发此检查点的用户消息 ID（前端用于绑定消息与检查点） |
 
 **Replay 语义**：
 - 检查点之前的节点不重新执行（结果已缓存）
 - 检查点之后的节点重新执行（LLM / API / 中断会再次触发）
 - 提供 `messages` 时注入用户输入触发模型重新生成
 
+**ReplayRequest 请求体**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `thread_id` | `str` | 对话线程 ID |
+| `checkpoint_id` | `str` | 目标检查点 ID |
+| `checkpoint_ns` | `str`（默认""） | 检查点命名空间（子图场景） |
+| `messages` | `list[dict]` | 要注入的用户消息列表 |
+| `stream` | `bool`（默认 true） | 是否通过 SSE 流式返回 |
+
 **Fork 语义**：
 - 通过 `graph.update_state` 创建新分支检查点，原始执行链完整保留
 - `values` 可传入任意 state 字段，通过对应 reducer 应用
 - 新分支独立发展，前端展示为对话树
+
+**ForkRequest 请求体**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `thread_id` | `str` | 对话线程 ID |
+| `checkpoint_id` | `str` | 分叉起点检查点 ID |
+| `checkpoint_ns` | `str`（默认""） | 检查点命名空间（子图场景） |
+| `values` | `dict` | 要修改的 state 字段（如 `{"messages": [...]}`） |
+| `as_node` | `str` | 显式指定产生此更新的节点名（并行分支/新线程场景） |
+| `stream` | `bool`（默认 true） | 是否通过 SSE 流式返回 |
 
 ---
 
@@ -274,54 +294,24 @@ Files 路由和 Memory & Skill 路由共享相同的操作模式，区别仅在�
 
 ### 5. RAG Pipeline 路由（`/api/rag`）
 
-RAG 入库管道路由，前缀 `/api/rag`，标签 `rag-pipeline`。
+RAG 入库管道路由，前缀 `/api/rag`，标签 `rag-pipeline`。共 13 个端点，覆盖文档处理、配置管理及 ChromaDB 数据浏览。
+
+> 完整端点说明、Schema 速查表、`rag_config.yaml` 配置结构、二级分割流程、错误码详见 → **[API-rag模块.md](API-rag模块.md)**
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/rag/process` | 通过文件路径处理 .md 文档（JSON body 模式），支持 `preview_only` |
-| `POST` | `/api/rag/process/upload` | 上传 .md 文件，完成分切 +（可选）入库（multipart 模式） |
-| `POST` | `/api/rag/delete` | 按 ID 从向量库中删除文档 |
+| `POST` | `/api/rag/process` | 路径模式批量入库（支持 `preview_only`） |
+| `POST` | `/api/rag/process/upload` | 上传模式批量入库（multipart） |
+| `POST` | `/api/rag/delete` | 按 ID 批量删除文档 |
 | `GET` | `/api/rag/health` | 向量库健康检查 |
 | `GET` | `/api/rag/config` | 读取 `rag_config.yaml` 完整配置 |
-| `PUT` | `/api/rag/config` | 覆写 `rag_config.yaml`，自动重载运行时配置 |
-
-**RAGProcessRequest**：
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `files` | `list[str]` | ✅ | .md 文件绝对路径列表（>=1） |
-| `preview_dir` | `str` | ❌ | 分块预览输出目录 |
-| `preview_only` | `bool` | ❌ | 仅预览分块而不入库（默认 false） |
-
-**RAGProcessResponse**：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `total_files` | `int` | 总文件数 |
-| `success_count` | `int` | 成功数 |
-| `failed_count` | `int` | 失败数 |
-| `total_chunks` | `int` | 总入库分块数 |
-| `collection_count` | `int` | 向量库当前文档块总数 |
-| `split_config` | `SplitConfig` | 本次处理使用的分割配置 |
-| `results` | `list[RAGProcessResult]` | 每个文件的处理详情 |
-
-**RAGDeleteResponse**：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `deleted_count` | `int` | 成功删除的文档数 |
-| `collection_count` | `int` | 向量库当前文档块总数 |
-| `message` | `str` | 操作描述 |
-
-**RAGHealthResponse**：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `collection_name` | `str` | 集合名称 |
-| `collection_count` | `int` | 当前文档块总数 |
-| `persist_directory` | `str` | 持久化目录 |
-| `embedding_model` | `str` | 嵌入模型名称 |
-| `embedding_base_url` | `str` | 嵌入模型服务地址 |
+| `PUT` | `/api/rag/config` | 覆写 `rag_config.yaml`，自动热重载 |
+| `GET` | `/api/rag/collections` | 列出所有集合 |
+| `GET` | `/api/rag/collection/{name}/stats` | 集合统计（文档数/空率/维度/元数据覆盖率） |
+| `GET` | `/api/rag/collection/{name}/documents` | 分页查询集合文档 |
+| `POST` | `/api/rag/collection/{name}/delete-docs` | 集合内批量删除文档 |
+| `POST` | `/api/rag/collection/{name}/clear` | 清空集合 |
+| `DELETE` | `/api/rag/collection/{name}` | 删除整个集合 |
 
 ---
 
@@ -375,7 +365,7 @@ RAG 入库管道路由，前缀 `/api/rag`，标签 `rag-pipeline`。
 
 #### ChatRequest
 ```
-messages: list[Message]        # 对话消息（role="user"|"assistant"|"system", content:>=1）
+messages: list[Message]        # 对话消息（role="user"|"assistant"|"system", content:str|list[dict] 支持多模态）
 checkpoint_id: str?            # 检查点 ID
 checkpoint_ns: str?            # 检查点命名空间
 rubric: str?                   # 完成条件
@@ -390,12 +380,13 @@ decisions: list[Decision]      # 决策列表（type="approve"|"reject"|"edit", 
 
 #### ChatResponse
 ```
-messages: list[MessageResponse]   # role + content + reason_content?
+messages: list[MessageResponse]   # role + content + reason_content? + id?
+head_checkpoint_id: str?          # 当前分支头检查点 ID
 ```
 
 #### StreamResponse（SSE 流式）
 
-核心流式事件模型，支持 9 种事件类型：
+核心流式事件模型，支持 10 种事件类型：
 
 | 事件类型 | 触发条件 | 额外字段 |
 |----------|----------|----------|
@@ -403,6 +394,7 @@ messages: list[MessageResponse]   # role + content + reason_content?
 | `reasoning` | 推理内容（思维链） | — |
 | `tool_call` | 工具调用增量 | `tool_call_id`, `tool_call_name`, `tool_call_args` |
 | `tool_result` | 工具执行结果 | `tool_call_id` |
+| `image` | 多模态图片内容 | `content` 为 image_url 对象 |
 | `interrupt` | HITL 中断 | `content` 为中断数据的 JSON |
 | `checkpoint` | 检查点生成（input 或 leaf） | `content` 含 `checkpoint_id`, `parent_checkpoint_id`, `kind` |
 | `rubric` | Rubric 评估事件 | `content` 含评估详情 JSON |
@@ -418,6 +410,40 @@ messages: list[MessageResponse]   # role + content + reason_content?
 }
 ```
 
+### 检查点新增模型
+
+#### CheckpointHistoryResponse
+```
+thread_id: str
+checkpoints: list[CheckpointSummary]   # 分页后的检查点列表
+```
+
+#### CheckpointDetail（Inspector 面板完整信息）
+```
+checkpoint_id: str
+parent_checkpoint_id: str?
+config: dict                           # 完整 config（可用于 invoke/update_state）
+next_nodes: list[str]                  # 待执行节点
+interrupts: list[CheckpointInterrupt]  # 结构化中断数据
+messages: list[MessageResponse]         # 当前检查点消息快照
+values: dict                           # 完整 state values 字典
+subgraphs: list[SubgraphState]         # 子图检查点列表
+```
+
+#### CheckpointInterrupt（结构化中断数据）
+```
+action_requests: list[dict]            # 待审批工具调用 [{name, args}]
+review_configs: list[dict]             # 审批配置 [{action_name, allowed_decisions}]
+interrupt_id: str?                     # LangGraph interrupt id
+```
+
+#### SubgraphState（子图检查点）
+```
+config: dict                           # 子图完整 config（可用于 replay/fork）
+next_nodes: list[str]                  # 子图待执行节点
+interrupts: list[CheckpointInterrupt]  # 子图中断数据
+```
+
 ---
 
 ## 服务层概览
@@ -426,7 +452,7 @@ messages: list[MessageResponse]   # role + content + reason_content?
 
 | 服务模块 | 职责 |
 |----------|------|
-| `chat_service` | 非流式对话（`graph.ainvoke`）、SSE 流式对话、对话恢复、文件提取拼接 |
+| `chat_service` | 非流式对话（`graph.ainvoke`）、SSE 流式对话、对话恢复、附件提取（PDF/DOCX 文本 + 图片压缩转 base64 data URL） |
 | `thread_service` | 从 SQLite 获取/删除会话历史，列出线程 |
 | `checkpoint_service` | 获取 input 检查点列表、重放执行、分支创建 |
 | `file_service` | 文件系统 CRUD：目录浏览、文件读写、创建、上传、重命名、移动、删除、搜索 |
@@ -525,16 +551,22 @@ HTTPException
 |------|------|
 | `pdf_to_text` | 使用 pdfplumber 提取 PDF 文本 |
 | `docx_to_text` | 使用 MarkItDown 提取 DOCX 文本 |
+| `compress_image` | 将图片等比例缩放至 1024px 并 JPEG 压缩 |
+| `image_to_base64_data_url` | 将图片 bytes 转为 base64 data URL |
 | `save_extracted_text` | 将提取的文本保存为 `.md` 文件到 `UPLOADS_DIR` |
 
 模块级单例 `_markitdown = MarkItDown()` 避免重复初始化。
 
-**支持格式**（`SUPPORTED_EXTENSIONS`）：
+**支持格式**（`SUPPORTED_EXTENSIONS` = 文本提取器 + 图片格式）：
 
-| 扩展名 | 提取器 |
-|--------|--------|
-| `.pdf` | `pdf_to_text` |
-| `.docx` | `docx_to_text` |
+| 扩展名 | 类型 | 处理方式 |
+|--------|------|----------|
+| `.pdf` | 文本 | `pdf_to_text` 提取文本后拼入消息 |
+| `.docx` | 文本 | `docx_to_text` 提取文本后拼入消息 |
+| `.jpg`/`.jpeg` | 图片 | 压缩后转 base64 data URL，直接传给多模态模型 |
+| `.png` | 图片 | 压缩后转 JPEG base64 data URL |
+| `.gif` | 图片 | 压缩后转 JPEG base64 data URL |
+| `.webp` | 图片 | 压缩后转 JPEG base64 data URL |
 
 ---
 

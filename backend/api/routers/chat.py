@@ -1,4 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, Form
+from typing import Annotated
+
+from fastapi import APIRouter, UploadFile, File, Form, Path
 from fastapi.responses import StreamingResponse
 
 from backend.api.schemas.request import ChatRequest
@@ -24,7 +26,10 @@ router = APIRouter(prefix="/chat", tags=["chat"])
     log_msg="非流式聊天异常 | thread_id={thread_id}",
     detail_msg="非流式聊天失败: thread_id={thread_id}",
 )
-async def chat_endpoint(chat_request: ChatRequest, thread_id: str):
+async def chat_endpoint(
+    chat_request: ChatRequest,
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+) -> ChatResponse:
     """非流式聊天端点"""
     logger.info("POST /chat/%s | 非流式请求", thread_id)
     return await invoke_chat(chat_request, thread_id)
@@ -36,7 +41,10 @@ async def chat_endpoint(chat_request: ChatRequest, thread_id: str):
     log_msg="流式聊天异常 | thread_id={thread_id}",
     detail_msg="流式聊天启动失败: thread_id={thread_id}",
 )
-async def chat_stream(chat_request: ChatRequest, thread_id: str):
+async def chat_stream(
+    chat_request: ChatRequest,
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+):
     """流式聊天端点（支持中断检测 & 检查点恢复）"""
     logger.info(
         "POST /chat/%s/stream | 流式请求 | checkpoint_id=%s checkpoint_ns=%s",
@@ -54,7 +62,10 @@ async def chat_stream(chat_request: ChatRequest, thread_id: str):
     log_msg="恢复聊天异常 | thread_id={thread_id}",
     detail_msg="恢复聊天失败: thread_id={thread_id}",
 )
-async def resume_chat_endpoint(resume_request: ResumeRequest, thread_id: str):
+async def resume_chat_endpoint(
+    resume_request: ResumeRequest,
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+):
     """恢复中断的对话 —— 传入用户决策后继续流式返回结果"""
     logger.info("POST /chat/%s/resume | 恢复请求", thread_id)
     return StreamingResponse(
@@ -74,10 +85,10 @@ async def resume_chat_endpoint(resume_request: ResumeRequest, thread_id: str):
     detail_msg="带文件非流式聊天失败: thread_id={thread_id}",
 )
 async def chat_with_files_endpoint(
-    thread_id: str,
-    messages: str = Form(..., description='JSON 字符串，形如 {"messages": [{"role":"user","content":"..."}]}'),
-    files: list[UploadFile] = File(default_factory=list, description="PDF / DOCX 文件列表"),
-):
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    messages: Annotated[str, Form(description='JSON 字符串，形如 {"messages": [{"role":"user","content":"..."}]}')],
+    files: Annotated[list[UploadFile], File(default_factory=list, description="PDF / DOCX 文件列表")],
+) -> ChatResponse:
     """非流式聊天（支持上传 PDF / DOCX 附件）。"""
     logger.info("POST /chat/%s/with-files | 非流式 | files=%d", thread_id, len(files))
     file_data = await _read_upload_files(files)
@@ -91,9 +102,9 @@ async def chat_with_files_endpoint(
     detail_msg="带文件流式聊天启动失败: thread_id={thread_id}",
 )
 async def chat_with_files_stream_endpoint(
-    thread_id: str,
-    messages: str = Form(..., description='JSON 字符串，形如 {"messages": [{"role":"user","content":"..."}]}'),
-    files: list[UploadFile] = File(default_factory=list, description="PDF / DOCX 文件列表"),
+    thread_id: Annotated[str, Path(description="对话线程 ID")],
+    messages: Annotated[str, Form(description='JSON 字符串，形如 {"messages": [{"role":"user","content":"..."}]}')],
+    files: Annotated[list[UploadFile], File(default_factory=list, description="PDF / DOCX 文件列表")],
 ):
     """流式聊天（支持上传 PDF / DOCX 附件）。"""
     logger.info("POST /chat/%s/with-files/stream | 流式 | files=%d", thread_id, len(files))

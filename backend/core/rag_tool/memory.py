@@ -220,8 +220,6 @@ memory_store = MemoryStore(
     persist_directory=RAG_PERSIST_DIR,
 )
 
-
-# ------------------ MCP 工具定义 ------------------
 @tool()
 async def save_memory(memory_key: str, memory_value: str) -> str:
     """保存或更新一条结构化记忆（若 key 已存在则覆盖）。

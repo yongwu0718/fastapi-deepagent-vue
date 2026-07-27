@@ -1,5 +1,6 @@
 enabled:
 - billing_analyze
+- fastapi
 - gonghao-baowen-writing
 - subagents
 - sunzi-bingfa

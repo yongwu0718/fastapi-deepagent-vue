@@ -65,14 +65,17 @@ FileBrowser.vue (主容器)
 ### 依赖注入流程
 
 ```
-createFileState() + createFileComputed(state)     → 状态层
-createFileDirectory(state, scheduleSaveRef)        → 目录
-createFileTabs(state, scheduleSaveRef)             → 标签页
-createFilePersistence(state, computed, dir, tabs)  → 持久化（迟到绑定注入 _scheduleSave）
-createFileOps(state, loadDir, closeTab)            → CRUD
-createFileSplit(state, closeTab)                   → 分屏
-createFileSearch(state)                            → 搜索
+createFileState() + createFileComputed(state)                → 状态层
+createFileDirectory(state, () => scheduleSaveRef.fn())        → 目录
+createFileTabs(state, () => scheduleSaveRef.fn())             → 标签页
+createFilePersistence(state, computed, loadDirectory, openFile) → 持久化
+scheduleSaveRef.fn = persist._scheduleSave                    → 迟到绑定
+createFileOps(state, () => loadDirectory(), closeTab)        → CRUD
+createFileSplit(state, closeTab)                             → 分屏
+createFileSearch(state)                                      → 搜索
 ```
+
+> **迟到绑定**：`scheduleSaveRef` 初始为空函数，`persist._scheduleSave` 创建后再注入，避免循环依赖。
 
 ### FileTab 接口
 
@@ -143,6 +146,7 @@ refresh()                      // 刷新当前目录
 
 ```typescript
 openFile(path: string)         // 打开文件（分屏时允许在另一窗格新建副本）
+readFile(path: string)         // openFile 的别名
 closeTab(tabId: string)        // 关闭标签（自动切换到相邻标签，无标签时退出分屏）
 switchTab(tabId: string)       // 切换活跃标签
 selectEntry(entry: FileEntry)  // 选中条目（目录进入，文件打开标签）
@@ -269,29 +273,44 @@ composable 返回 `{ renderedHtml, outline }`，`outline` 从原始 markdown 内
 
 ## FileBrowser.vue（主容器）
 
-**职责**：头部栏 + 模式切换 + 对话框管理 + 大纲面板。
+**职责**：头部栏 + 模式切换 + 对话框管理 + 大纲面板 + 内容宽度调节。
 
 ```
-┌─────────────────────────────────────────────┐
-│ 刷新 | 面包屑 | 状态 | 编辑/复制/保存 | 分屏 | 新建 | 上传 │  ← 头部（常驻）
-├─────────────────────────────────────────────┤
-│ [file1.md] [file2.txt]              [大纲]   │  ← 单屏标签栏
-├─────────────────────────────────────────────┤
-│  文件列表 / FilePreview                      │  ← 单屏内容区
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ 刷新 | 面包屑 | 状态 | [宽度] | 编辑/预览/复制/保存 | [搜索] | 分屏 | 新建 | 目录 | 上传 │
+├──────────────────────────────────────────────────────────────────────┤
+│ [file1.md] [file2.txt]                                    [大纲]      │  ← 单屏标签栏
+├──────────────────────────────────────────────────────────────────────┤
+│  文件列表 / FilePreview                                               │  ← 单屏内容区
+└──────────────────────────────────────────────────────────────────────┘
 
-                  ↓ 点击分屏按钮后 ↓
+                          ↓ 点击分屏按钮后 ↓
 
-┌─────────────────────────────────────────────┐
-│ 刷新 | 面包屑 | 状态 | 编辑/复制/保存 | [分屏] | 新建 | 上传 │
-├─────────────────────────────────────────────┤
-│ 左标签栏 [file1.md] [file2.md] │ 右标签栏 [file3.md]  │  ← 双标签栏
-├───────────────────────────────┼──────────────────────┤
-│ 文件列表 / FilePreview(左)     │ 文件列表 / FilePreview(右) │  ← SplitPane 分屏
-└───────────────────────────────┴──────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ 刷新 | 面包屑 | 状态 | [宽度] | 编辑/预览/复制/保存 | [搜索] | [分屏] | 新建 | 目录 | 上传 │
+├──────────────────────────────────────────────────────────────────────┤
+│ 左标签栏 [file1.md] [file2.md] │ 右标签栏 [file3.md]                  │  ← 双标签栏
+├────────────────────────────────┼─────────────────────────────────────┤
+│ 文件列表 / FilePreview(左)      │ 文件列表 / FilePreview(右)           │  ← SplitPane 分屏
+└────────────────────────────────┴─────────────────────────────────────┘
 ```
+
+> **搜索框**仅在无活跃标签时显示（列表模式下），搜索输入实时触发 300ms 防抖搜索。
 
 分屏使用 `split-pane-v3` 库实现，分隔条可拖拽调整比例（最小 20%），hover 时高亮紫色。
+
+### 内容宽度滑块
+
+FileBrowser 提供一个内容区宽度滑块，控制 Markdown 预览与文件列表的最大宽度：
+
+| 属性 | 值 |
+|------|-----|
+| 范围 | 50% ~ 100% |
+| 默认值 | 80% |
+| 生效位置 | `.fb-body` 的 `max-width` CSS 属性 |
+| 过渡效果 | `transition: max-width 0.2s ease` |
+
+滑块位于头部右侧，编辑/保存按钮之前，以竖线分隔。用户拖拽滑块时实时调整内容区宽度，百分比数值显示在滑块右侧。
 
 ### 拖拽功能
 
@@ -310,6 +329,9 @@ composable 返回 `{ renderedHtml, outline }`，`outline` 从原始 markdown 内
 - **只读文本**：复制
 - **二进制/PDF/图片**：下载
 - **分屏按钮**：至少一个标签打开时显示，高亮表示当前处于分屏模式
+- **宽度滑块**：始终可见，调节内容区 `max-width`（50%~100%，默认 80%）
+- **搜索框**：仅在无活跃标签时（列表模式）显示
+- **新建 / 目录 / 上传**：始终可见的操作按钮
 
 ### 对话框管理
 
@@ -463,13 +485,10 @@ handleDownload()  // 下载文件
 copied            // 复制成功标记
 toggleEdit()      // 切换编辑/预览
 outline           // 当前文件的标题大纲（OutlineItem[]）
-showOutline       // 大纲面板是否可见
-// ── Mermaid 缩放/平移 ──
-mermaidZoom       // 缩放百分比（Ref<number>，默认 140）
-isPanMode         // 是否平移模式
-panOffset         // 平移偏移量 { x, y }
-hasMermaid        // Computed: 当前内容是否含 mermaid 图表
+showOutline       // 大纲面板是否可见（Ref<boolean>）
 ```
+
+> **Mermaid 缩放/平移**相关属性 (`mermaidZoom`、`isPanMode`、`panOffset`、`hasMermaid`) 为组件内部状态，不通过 `defineExpose` 对外暴露，仅用于内部工具栏交互。
 
 ### blob URL 管理
 

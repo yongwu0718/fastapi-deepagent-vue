@@ -141,8 +141,8 @@ class ReplayRequest(BaseModel):
     - 从最终检查点（next 为空）重放：无操作
     - 提供 messages 时：注入用户消息作为新输入，触发模型重新生成
     """
-    thread_id: str = Field(..., description="对话线程 ID")
-    checkpoint_id: str = Field(..., description="目标检查点 ID")
+    thread_id: str = Field(description="对话线程 ID")
+    checkpoint_id: str = Field(description="目标检查点 ID")
     checkpoint_ns: str = Field(default="", description="检查点命名空间（子图场景）")
     messages: Optional[List[dict]] = Field(
         default=None,
@@ -169,8 +169,8 @@ class ForkRequest(BaseModel):
     - 遇到中断时总是重新触发
     - as_node 在并行分支 / 跳过节点 / 新线程场景下显式指定
     """
-    thread_id: str = Field(..., description="对话线程 ID")
-    checkpoint_id: str = Field(..., description="分支出起点检查点 ID")
+    thread_id: str = Field(description="对话线程 ID")
+    checkpoint_id: str = Field(description="分支出起点检查点 ID")
     checkpoint_ns: str = Field(default="", description="检查点命名空间（子图场景）")
     values: dict = Field(
         default_factory=dict,
