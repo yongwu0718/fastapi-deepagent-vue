@@ -47,6 +47,7 @@ dist-ssr
 *.db-journal
 *.db-wal
 *.sql
+backend/data/
 save_db/
 # IDE
 .idea/

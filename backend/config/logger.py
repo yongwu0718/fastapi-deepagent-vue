@@ -208,7 +208,7 @@ def setup_logging(
     CURRENT_RUN_LOG_FILE = run_path
 
     # ── 抑制第三方库的噪音日志 ──
-    for lib in ("httpx", "httpcore", "urllib3", "asyncio", "aiosqlite"):
+    for lib in ("httpx", "httpcore", "urllib3", "asyncio", "aiosqlite", "watchfiles"):
         logging.getLogger(lib).setLevel(logging.WARNING)
 
     _initialized = True
