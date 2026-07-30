@@ -1,0 +1,14 @@
+{
+  "name": "index-rag-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Index RAG 桌面壳 —— 一键启动后端 + 前端，源码即时生效",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

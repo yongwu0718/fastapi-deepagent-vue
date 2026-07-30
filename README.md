@@ -119,6 +119,19 @@ npm run dev
 # 访问 http://localhost:5173
 ```
 
+### 桌面端启动（一键启动）
+
+```powershell
+# 1. 安装 Electron 依赖
+cd desktop
+npm install
+
+# 2. 一键启动（自动启动后端 + 前端）
+npm start
+```
+
+> 桌面端启动后会自动：① 启动 Python FastAPI 后端 ② 启动 Vite 开发服务器 ③ 打开桌面窗口。关闭窗口后服务继续运行（托盘常驻），修改源码即时生效。
+
 ### 微信机器人启动
 
 ```powershell
