@@ -54,7 +54,9 @@ dependencies = [
     "uuid-utils>=0.16.2",
     "langchain-docling>=2.0.0",
     "langchain-unstructured>=1.0.1",
-    "bilibili-api-python>=17.4.2"
+    "bilibili-api-python>=17.4.2",
+    "maturin>=1.14.1",
+    "pdf-inspector>=0.2.6",
 ]
 
 [build-system]
