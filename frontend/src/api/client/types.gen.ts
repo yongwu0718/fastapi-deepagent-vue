@@ -73,6 +73,26 @@ export type BodyUploadFileEndpointSettingsMemoryAndSkillUploadPost = {
 };
 
 /**
+ * ChangePasswordRequest
+ *
+ * 修改密码请求体。
+ */
+export type ChangePasswordRequest = {
+    /**
+     * Old Password
+     *
+     * 旧密码
+     */
+    old_password: string;
+    /**
+     * New Password
+     *
+     * 新密码（至少4位）
+     */
+    new_password: string;
+};
+
+/**
  * ChatRequest
  *
  * 聊天请求
@@ -456,6 +476,32 @@ export type CreateFileRequest = {
 };
 
 /**
+ * CreateUserRequest
+ *
+ * 创建用户请求体。
+ */
+export type CreateUserRequest = {
+    /**
+     * Username
+     *
+     * 新用户名
+     */
+    username: string;
+    /**
+     * Password
+     *
+     * 密码（至少4位）
+     */
+    password: string;
+    /**
+     * Is Admin
+     *
+     * 是否设为管理员
+     */
+    is_admin?: boolean;
+};
+
+/**
  * Decision
  *
  * 单条决策
@@ -612,6 +658,26 @@ export type HttpValidationError = {
 };
 
 /**
+ * LoginRequest
+ *
+ * 登录请求体。
+ */
+export type LoginRequest = {
+    /**
+     * Username
+     *
+     * 用户名
+     */
+    username: string;
+    /**
+     * Password
+     *
+     * 密码
+     */
+    password: string;
+};
+
+/**
  * Message
  *
  * 单个消息模型
@@ -699,6 +765,26 @@ export type MoveRequest = {
      * 目标目录相对路径，空字符串表示根目录
      */
     target_dir: string;
+};
+
+/**
+ * OperationResult
+ *
+ * 通用操作结果响应。
+ */
+export type OperationResult = {
+    /**
+     * Success
+     *
+     * 操作是否成功
+     */
+    success: boolean;
+    /**
+     * Message
+     *
+     * 结果描述
+     */
+    message: string;
 };
 
 /**
@@ -1080,6 +1166,26 @@ export type RagSplitterConfig = {
 };
 
 /**
+ * RegisterRequest
+ *
+ * 新用户注册请求体。
+ */
+export type RegisterRequest = {
+    /**
+     * Username
+     *
+     * 用户名
+     */
+    username: string;
+    /**
+     * Password
+     *
+     * 密码（至少4位）
+     */
+    password: string;
+};
+
+/**
  * RenameRequest
  *
  * 重命名文件/目录请求
@@ -1222,6 +1328,90 @@ export type SplitConfig = {
 };
 
 /**
+ * ToggleUserRequest
+ *
+ * 启用/禁用用户请求体。
+ */
+export type ToggleUserRequest = {
+    /**
+     * Username
+     *
+     * 目标用户名
+     */
+    username: string;
+    /**
+     * Active
+     *
+     * 是否启用
+     */
+    active: boolean;
+};
+
+/**
+ * TokenResponse
+ *
+ * 登录成功返回的 Token。
+ */
+export type TokenResponse = {
+    /**
+     * Access Token
+     *
+     * JWT access token
+     */
+    access_token: string;
+    /**
+     * Token Type
+     *
+     * Token 类型
+     */
+    token_type?: string;
+};
+
+/**
+ * UserListItem
+ *
+ * 用户列表项。
+ */
+export type UserListItem = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Is Admin
+     */
+    is_admin: boolean;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * UserOut
+ *
+ * 公开的用户信息（不暴露密码）。
+ */
+export type UserOut = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Is Admin
+     */
+    is_admin?: boolean;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -1249,11 +1439,202 @@ export type ValidationError = {
     };
 };
 
+export type LoginAuthLoginPostData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/login';
+};
+
+export type LoginAuthLoginPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginAuthLoginPostError = LoginAuthLoginPostErrors[keyof LoginAuthLoginPostErrors];
+
+export type LoginAuthLoginPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TokenResponse;
+};
+
+export type LoginAuthLoginPostResponse = LoginAuthLoginPostResponses[keyof LoginAuthLoginPostResponses];
+
+export type GetMeAuthMeGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/me';
+};
+
+export type GetMeAuthMeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserOut;
+};
+
+export type GetMeAuthMeGetResponse = GetMeAuthMeGetResponses[keyof GetMeAuthMeGetResponses];
+
+export type RegisterAuthRegisterPostData = {
+    body: RegisterRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/register';
+};
+
+export type RegisterAuthRegisterPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RegisterAuthRegisterPostError = RegisterAuthRegisterPostErrors[keyof RegisterAuthRegisterPostErrors];
+
+export type RegisterAuthRegisterPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TokenResponse;
+};
+
+export type RegisterAuthRegisterPostResponse = RegisterAuthRegisterPostResponses[keyof RegisterAuthRegisterPostResponses];
+
+export type ListUsersAuthUsersGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/users';
+};
+
+export type ListUsersAuthUsersGetResponses = {
+    /**
+     * Response List Users Auth Users Get
+     *
+     * Successful Response
+     */
+    200: Array<UserListItem>;
+};
+
+export type ListUsersAuthUsersGetResponse = ListUsersAuthUsersGetResponses[keyof ListUsersAuthUsersGetResponses];
+
+export type CreateUserAuthUsersPostData = {
+    body: CreateUserRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/users';
+};
+
+export type CreateUserAuthUsersPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateUserAuthUsersPostError = CreateUserAuthUsersPostErrors[keyof CreateUserAuthUsersPostErrors];
+
+export type CreateUserAuthUsersPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserOut;
+};
+
+export type CreateUserAuthUsersPostResponse = CreateUserAuthUsersPostResponses[keyof CreateUserAuthUsersPostResponses];
+
+export type RemoveUserAuthUsersUsernameDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Username
+         */
+        username: string;
+    };
+    query?: never;
+    url: '/auth/users/{username}';
+};
+
+export type RemoveUserAuthUsersUsernameDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RemoveUserAuthUsersUsernameDeleteError = RemoveUserAuthUsersUsernameDeleteErrors[keyof RemoveUserAuthUsersUsernameDeleteErrors];
+
+export type RemoveUserAuthUsersUsernameDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: OperationResult;
+};
+
+export type RemoveUserAuthUsersUsernameDeleteResponse = RemoveUserAuthUsersUsernameDeleteResponses[keyof RemoveUserAuthUsersUsernameDeleteResponses];
+
+export type ToggleUserAuthUsersTogglePutData = {
+    body: ToggleUserRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/users/toggle';
+};
+
+export type ToggleUserAuthUsersTogglePutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ToggleUserAuthUsersTogglePutError = ToggleUserAuthUsersTogglePutErrors[keyof ToggleUserAuthUsersTogglePutErrors];
+
+export type ToggleUserAuthUsersTogglePutResponses = {
+    /**
+     * Successful Response
+     */
+    200: OperationResult;
+};
+
+export type ToggleUserAuthUsersTogglePutResponse = ToggleUserAuthUsersTogglePutResponses[keyof ToggleUserAuthUsersTogglePutResponses];
+
+export type ChangeMyPasswordAuthChangePasswordPutData = {
+    body: ChangePasswordRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/change-password';
+};
+
+export type ChangeMyPasswordAuthChangePasswordPutErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ChangeMyPasswordAuthChangePasswordPutError = ChangeMyPasswordAuthChangePasswordPutErrors[keyof ChangeMyPasswordAuthChangePasswordPutErrors];
+
+export type ChangeMyPasswordAuthChangePasswordPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: OperationResult;
+};
+
+export type ChangeMyPasswordAuthChangePasswordPutResponse = ChangeMyPasswordAuthChangePasswordPutResponses[keyof ChangeMyPasswordAuthChangePasswordPutResponses];
+
 export type ChatEndpointChatThreadIdPostData = {
     body: ChatRequest;
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1284,6 +1665,8 @@ export type ChatStreamChatThreadIdStreamPostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1312,6 +1695,8 @@ export type ResumeChatEndpointChatThreadIdResumePostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1340,6 +1725,8 @@ export type ChatWithFilesEndpointChatThreadIdWithFilesPostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1370,6 +1757,8 @@ export type ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1398,6 +1787,8 @@ export type GetMessagesHistoryChatThreadIdGetMessagesHistoryGetData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1435,6 +1826,8 @@ export type DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1477,6 +1870,8 @@ export type GetInputCheckpointsCheckpointsThreadIdInputsGetData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1520,6 +1915,8 @@ export type ReplayCheckpointCheckpointsThreadIdReplayPostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1548,6 +1945,8 @@ export type ForkCheckpointCheckpointsThreadIdForkPostData = {
     path: {
         /**
          * Thread Id
+         *
+         * 对话线程 ID
          */
         thread_id: string;
     };
@@ -1596,10 +1995,16 @@ export type ListDirectoryEndpointApiFilesListGetError = ListDirectoryEndpointApi
 
 export type ListDirectoryEndpointApiFilesListGetResponses = {
     /**
+     * Response List Directory Endpoint Api Files List Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ListDirectoryEndpointApiFilesListGetResponse = ListDirectoryEndpointApiFilesListGetResponses[keyof ListDirectoryEndpointApiFilesListGetResponses];
 
 export type GetFileEndpointApiFilesFileGetData = {
     body?: never;
@@ -1626,10 +2031,16 @@ export type GetFileEndpointApiFilesFileGetError = GetFileEndpointApiFilesFileGet
 
 export type GetFileEndpointApiFilesFileGetResponses = {
     /**
+     * Response Get File Endpoint Api Files File Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type GetFileEndpointApiFilesFileGetResponse = GetFileEndpointApiFilesFileGetResponses[keyof GetFileEndpointApiFilesFileGetResponses];
 
 export type ReadFileEndpointApiFilesReadGetData = {
     body?: never;
@@ -1656,10 +2067,16 @@ export type ReadFileEndpointApiFilesReadGetError = ReadFileEndpointApiFilesReadG
 
 export type ReadFileEndpointApiFilesReadGetResponses = {
     /**
+     * Response Read File Endpoint Api Files Read Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ReadFileEndpointApiFilesReadGetResponse = ReadFileEndpointApiFilesReadGetResponses[keyof ReadFileEndpointApiFilesReadGetResponses];
 
 export type SearchFilesEndpointApiFilesSearchGetData = {
     body?: never;
@@ -1686,10 +2103,16 @@ export type SearchFilesEndpointApiFilesSearchGetError = SearchFilesEndpointApiFi
 
 export type SearchFilesEndpointApiFilesSearchGetResponses = {
     /**
+     * Response Search Files Endpoint Api Files Search Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type SearchFilesEndpointApiFilesSearchGetResponse = SearchFilesEndpointApiFilesSearchGetResponses[keyof SearchFilesEndpointApiFilesSearchGetResponses];
 
 export type CreateFileEndpointApiFilesCreateFilePostData = {
     body: CreateFileRequest;
@@ -1709,10 +2132,16 @@ export type CreateFileEndpointApiFilesCreateFilePostError = CreateFileEndpointAp
 
 export type CreateFileEndpointApiFilesCreateFilePostResponses = {
     /**
+     * Response Create File Endpoint Api Files Create File Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type CreateFileEndpointApiFilesCreateFilePostResponse = CreateFileEndpointApiFilesCreateFilePostResponses[keyof CreateFileEndpointApiFilesCreateFilePostResponses];
 
 export type CreateDirectoryEndpointApiFilesCreateDirectoryPostData = {
     body: CreateDirectoryRequest;
@@ -1732,10 +2161,16 @@ export type CreateDirectoryEndpointApiFilesCreateDirectoryPostError = CreateDire
 
 export type CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses = {
     /**
+     * Response Create Directory Endpoint Api Files Create Directory Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type CreateDirectoryEndpointApiFilesCreateDirectoryPostResponse = CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses[keyof CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses];
 
 export type UploadFileEndpointApiFilesUploadPostData = {
     body: BodyUploadFileEndpointApiFilesUploadPost;
@@ -1762,10 +2197,16 @@ export type UploadFileEndpointApiFilesUploadPostError = UploadFileEndpointApiFil
 
 export type UploadFileEndpointApiFilesUploadPostResponses = {
     /**
+     * Response Upload File Endpoint Api Files Upload Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type UploadFileEndpointApiFilesUploadPostResponse = UploadFileEndpointApiFilesUploadPostResponses[keyof UploadFileEndpointApiFilesUploadPostResponses];
 
 export type RenameEndpointApiFilesRenamePutData = {
     body: RenameRequest;
@@ -1785,10 +2226,16 @@ export type RenameEndpointApiFilesRenamePutError = RenameEndpointApiFilesRenameP
 
 export type RenameEndpointApiFilesRenamePutResponses = {
     /**
+     * Response Rename Endpoint Api Files Rename Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type RenameEndpointApiFilesRenamePutResponse = RenameEndpointApiFilesRenamePutResponses[keyof RenameEndpointApiFilesRenamePutResponses];
 
 export type MoveEndpointApiFilesMovePutData = {
     body: MoveRequest;
@@ -1808,10 +2255,16 @@ export type MoveEndpointApiFilesMovePutError = MoveEndpointApiFilesMovePutErrors
 
 export type MoveEndpointApiFilesMovePutResponses = {
     /**
+     * Response Move Endpoint Api Files Move Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type MoveEndpointApiFilesMovePutResponse = MoveEndpointApiFilesMovePutResponses[keyof MoveEndpointApiFilesMovePutResponses];
 
 export type ModifyFileEndpointApiFilesModifyPutData = {
     body: ModifyFileRequest;
@@ -1831,10 +2284,16 @@ export type ModifyFileEndpointApiFilesModifyPutError = ModifyFileEndpointApiFile
 
 export type ModifyFileEndpointApiFilesModifyPutResponses = {
     /**
+     * Response Modify File Endpoint Api Files Modify Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ModifyFileEndpointApiFilesModifyPutResponse = ModifyFileEndpointApiFilesModifyPutResponses[keyof ModifyFileEndpointApiFilesModifyPutResponses];
 
 export type DeleteEndpointApiFilesDeleteDeleteData = {
     body: DeleteRequest;
@@ -1854,10 +2313,16 @@ export type DeleteEndpointApiFilesDeleteDeleteError = DeleteEndpointApiFilesDele
 
 export type DeleteEndpointApiFilesDeleteDeleteResponses = {
     /**
+     * Response Delete Endpoint Api Files Delete Delete
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type DeleteEndpointApiFilesDeleteDeleteResponse = DeleteEndpointApiFilesDeleteDeleteResponses[keyof DeleteEndpointApiFilesDeleteDeleteResponses];
 
 export type ReadModelConfigEndpointSettingsModelConfigReadGetData = {
     body?: never;
@@ -1884,10 +2349,16 @@ export type ReadModelConfigEndpointSettingsModelConfigReadGetError = ReadModelCo
 
 export type ReadModelConfigEndpointSettingsModelConfigReadGetResponses = {
     /**
+     * Response Read Model Config Endpoint Settings Model Config Read Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ReadModelConfigEndpointSettingsModelConfigReadGetResponse = ReadModelConfigEndpointSettingsModelConfigReadGetResponses[keyof ReadModelConfigEndpointSettingsModelConfigReadGetResponses];
 
 export type WriteModelConfigEndpointSettingsModelConfigWritePutData = {
     body: ModifyFileRequest;
@@ -1907,10 +2378,16 @@ export type WriteModelConfigEndpointSettingsModelConfigWritePutError = WriteMode
 
 export type WriteModelConfigEndpointSettingsModelConfigWritePutResponses = {
     /**
+     * Response Write Model Config Endpoint Settings Model Config Write Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type WriteModelConfigEndpointSettingsModelConfigWritePutResponse = WriteModelConfigEndpointSettingsModelConfigWritePutResponses[keyof WriteModelConfigEndpointSettingsModelConfigWritePutResponses];
 
 export type GetSkillsSettingsSkillsGetData = {
     body?: never;
@@ -1921,10 +2398,16 @@ export type GetSkillsSettingsSkillsGetData = {
 
 export type GetSkillsSettingsSkillsGetResponses = {
     /**
+     * Response Get Skills Settings Skills Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type GetSkillsSettingsSkillsGetResponse = GetSkillsSettingsSkillsGetResponses[keyof GetSkillsSettingsSkillsGetResponses];
 
 export type UpdateSkillsSettingsSkillsPutData = {
     body: SkillsUpdateRequest;
@@ -1944,10 +2427,16 @@ export type UpdateSkillsSettingsSkillsPutError = UpdateSkillsSettingsSkillsPutEr
 
 export type UpdateSkillsSettingsSkillsPutResponses = {
     /**
+     * Response Update Skills Settings Skills Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type UpdateSkillsSettingsSkillsPutResponse = UpdateSkillsSettingsSkillsPutResponses[keyof UpdateSkillsSettingsSkillsPutResponses];
 
 export type RebuildSettingsRebuildPostData = {
     body?: never;
@@ -1958,10 +2447,16 @@ export type RebuildSettingsRebuildPostData = {
 
 export type RebuildSettingsRebuildPostResponses = {
     /**
+     * Response Rebuild Settings Rebuild Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type RebuildSettingsRebuildPostResponse = RebuildSettingsRebuildPostResponses[keyof RebuildSettingsRebuildPostResponses];
 
 export type ListDirectoryEndpointSettingsMemoryAndSkillListGetData = {
     body?: never;
@@ -1972,11 +2467,11 @@ export type ListDirectoryEndpointSettingsMemoryAndSkillListGetData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
         /**
          * Path
          *
-         * 相对于根目录的路径，空字符串表示根目录
+         * 相对路径，空=根目录
          */
         path?: string;
     };
@@ -1994,10 +2489,16 @@ export type ListDirectoryEndpointSettingsMemoryAndSkillListGetError = ListDirect
 
 export type ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses = {
     /**
+     * Response List Directory Endpoint Settings Memory And Skill List Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ListDirectoryEndpointSettingsMemoryAndSkillListGetResponse = ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses[keyof ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses];
 
 export type GetFileEndpointSettingsMemoryAndSkillFileGetData = {
     body?: never;
@@ -2008,11 +2509,11 @@ export type GetFileEndpointSettingsMemoryAndSkillFileGetData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
         /**
          * Path
          *
-         * 相对于根目录的文件路径
+         * 相对路径
          */
         path: string;
     };
@@ -2030,6 +2531,8 @@ export type GetFileEndpointSettingsMemoryAndSkillFileGetError = GetFileEndpointS
 
 export type GetFileEndpointSettingsMemoryAndSkillFileGetResponses = {
     /**
+     * Response Get File Endpoint Settings Memory And Skill File Get
+     *
      * Successful Response
      */
     200: unknown;
@@ -2044,11 +2547,11 @@ export type ReadFileEndpointSettingsMemoryAndSkillReadGetData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
         /**
          * Path
          *
-         * 相对于根目录的文件路径
+         * 相对路径
          */
         path: string;
     };
@@ -2066,10 +2569,16 @@ export type ReadFileEndpointSettingsMemoryAndSkillReadGetError = ReadFileEndpoin
 
 export type ReadFileEndpointSettingsMemoryAndSkillReadGetResponses = {
     /**
+     * Response Read File Endpoint Settings Memory And Skill Read Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ReadFileEndpointSettingsMemoryAndSkillReadGetResponse = ReadFileEndpointSettingsMemoryAndSkillReadGetResponses[keyof ReadFileEndpointSettingsMemoryAndSkillReadGetResponses];
 
 export type SearchFilesEndpointSettingsMemoryAndSkillSearchGetData = {
     body?: never;
@@ -2080,7 +2589,7 @@ export type SearchFilesEndpointSettingsMemoryAndSkillSearchGetData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
         /**
          * Q
          *
@@ -2102,10 +2611,16 @@ export type SearchFilesEndpointSettingsMemoryAndSkillSearchGetError = SearchFile
 
 export type SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses = {
     /**
+     * Response Search Files Endpoint Settings Memory And Skill Search Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponse = SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses[keyof SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses];
 
 export type CreateFileEndpointSettingsMemoryAndSkillCreateFilePostData = {
     body: CreateFileRequest;
@@ -2116,7 +2631,7 @@ export type CreateFileEndpointSettingsMemoryAndSkillCreateFilePostData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/create-file';
 };
@@ -2132,10 +2647,16 @@ export type CreateFileEndpointSettingsMemoryAndSkillCreateFilePostError = Create
 
 export type CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses = {
     /**
+     * Response Create File Endpoint Settings Memory And Skill Create File Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponse = CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses[keyof CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses];
 
 export type CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostData = {
     body: CreateDirectoryRequest;
@@ -2146,7 +2667,7 @@ export type CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostData
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/create-directory';
 };
@@ -2162,10 +2683,16 @@ export type CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostErro
 
 export type CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses = {
     /**
+     * Response Create Directory Endpoint Settings Memory And Skill Create Directory Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponse = CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses[keyof CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses];
 
 export type UploadFileEndpointSettingsMemoryAndSkillUploadPostData = {
     body: BodyUploadFileEndpointSettingsMemoryAndSkillUploadPost;
@@ -2176,11 +2703,11 @@ export type UploadFileEndpointSettingsMemoryAndSkillUploadPostData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
         /**
          * Path
          *
-         * 目标相对路径（含文件名），如 docs/readme.md
+         * 目标相对路径
          */
         path: string;
     };
@@ -2198,10 +2725,16 @@ export type UploadFileEndpointSettingsMemoryAndSkillUploadPostError = UploadFile
 
 export type UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses = {
     /**
+     * Response Upload File Endpoint Settings Memory And Skill Upload Post
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type UploadFileEndpointSettingsMemoryAndSkillUploadPostResponse = UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses[keyof UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses];
 
 export type RenameEndpointSettingsMemoryAndSkillRenamePutData = {
     body: RenameRequest;
@@ -2212,7 +2745,7 @@ export type RenameEndpointSettingsMemoryAndSkillRenamePutData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/rename';
 };
@@ -2228,10 +2761,16 @@ export type RenameEndpointSettingsMemoryAndSkillRenamePutError = RenameEndpointS
 
 export type RenameEndpointSettingsMemoryAndSkillRenamePutResponses = {
     /**
+     * Response Rename Endpoint Settings Memory And Skill Rename Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type RenameEndpointSettingsMemoryAndSkillRenamePutResponse = RenameEndpointSettingsMemoryAndSkillRenamePutResponses[keyof RenameEndpointSettingsMemoryAndSkillRenamePutResponses];
 
 export type MoveEndpointSettingsMemoryAndSkillMovePutData = {
     body: MoveRequest;
@@ -2242,7 +2781,7 @@ export type MoveEndpointSettingsMemoryAndSkillMovePutData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/move';
 };
@@ -2258,10 +2797,16 @@ export type MoveEndpointSettingsMemoryAndSkillMovePutError = MoveEndpointSetting
 
 export type MoveEndpointSettingsMemoryAndSkillMovePutResponses = {
     /**
+     * Response Move Endpoint Settings Memory And Skill Move Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type MoveEndpointSettingsMemoryAndSkillMovePutResponse = MoveEndpointSettingsMemoryAndSkillMovePutResponses[keyof MoveEndpointSettingsMemoryAndSkillMovePutResponses];
 
 export type ModifyFileEndpointSettingsMemoryAndSkillModifyPutData = {
     body: ModifyFileRequest;
@@ -2272,7 +2817,7 @@ export type ModifyFileEndpointSettingsMemoryAndSkillModifyPutData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/modify';
 };
@@ -2288,10 +2833,16 @@ export type ModifyFileEndpointSettingsMemoryAndSkillModifyPutError = ModifyFileE
 
 export type ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses = {
     /**
+     * Response Modify File Endpoint Settings Memory And Skill Modify Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponse = ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses[keyof ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses];
 
 export type DeleteEndpointSettingsMemoryAndSkillDeleteDeleteData = {
     body: DeleteRequest;
@@ -2302,7 +2853,7 @@ export type DeleteEndpointSettingsMemoryAndSkillDeleteDeleteData = {
          *
          * 文件类型: 'memory'=记忆库, 'skills'=技能库
          */
-        type: 'memory' | 'skills';
+        type: string;
     };
     url: '/settings/memory-and-skill/delete';
 };
@@ -2318,10 +2869,16 @@ export type DeleteEndpointSettingsMemoryAndSkillDeleteDeleteError = DeleteEndpoi
 
 export type DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses = {
     /**
+     * Response Delete Endpoint Settings Memory And Skill Delete Delete
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponse = DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses[keyof DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses];
 
 export type ProcessRagEndpointApiRagProcessPostData = {
     body: RagProcessRequest;
@@ -2430,10 +2987,16 @@ export type GetRagConfigEndpointApiRagConfigGetData = {
 
 export type GetRagConfigEndpointApiRagConfigGetResponses = {
     /**
+     * Response Get Rag Config Endpoint Api Rag Config Get
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type GetRagConfigEndpointApiRagConfigGetResponse = GetRagConfigEndpointApiRagConfigGetResponses[keyof GetRagConfigEndpointApiRagConfigGetResponses];
 
 export type UpdateRagConfigEndpointApiRagConfigPutData = {
     body: RagFullConfigModel;
@@ -2453,10 +3016,16 @@ export type UpdateRagConfigEndpointApiRagConfigPutError = UpdateRagConfigEndpoin
 
 export type UpdateRagConfigEndpointApiRagConfigPutResponses = {
     /**
+     * Response Update Rag Config Endpoint Api Rag Config Put
+     *
      * Successful Response
      */
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type UpdateRagConfigEndpointApiRagConfigPutResponse = UpdateRagConfigEndpointApiRagConfigPutResponses[keyof UpdateRagConfigEndpointApiRagConfigPutResponses];
 
 export type ListCollectionsEndpointApiRagCollectionsGetData = {
     body?: never;
@@ -2479,6 +3048,8 @@ export type CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData = 
     path: {
         /**
          * Collection Name
+         *
+         * 集合名称
          */
         collection_name: string;
     };
@@ -2516,6 +3087,8 @@ export type CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGe
     path: {
         /**
          * Collection Name
+         *
+         * 集合名称
          */
         collection_name: string;
     };
@@ -2559,6 +3132,8 @@ export type DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocs
     path: {
         /**
          * Collection Name
+         *
+         * 集合名称
          */
         collection_name: string;
     };
@@ -2589,6 +3164,8 @@ export type ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData =
     path: {
         /**
          * Collection Name
+         *
+         * 集合名称
          */
         collection_name: string;
     };
@@ -2619,6 +3196,8 @@ export type DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData = {
     path: {
         /**
          * Collection Name
+         *
+         * 集合名称
          */
         collection_name: string;
     };

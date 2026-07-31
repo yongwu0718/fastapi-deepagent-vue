@@ -26,4 +26,5 @@ rag:
     enable_interactive: true
   collection:
     name: sunzi
-    persist_directory: backend/data/chroma_db
+    memory_name: memory
+    persist_directory: data/chroma_db

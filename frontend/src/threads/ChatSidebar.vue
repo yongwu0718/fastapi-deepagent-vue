@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/stores/useAuth'
 import type { ChatThread } from './useChatHistory'
 import type { Message } from '@/api/chat'
 import { getContentText } from '@/api/chat'
+
+const router = useRouter()
+const { username, clearAuth } = useAuth()
 
 const LS_MSG_CACHE_PREFIX = 'chat_msgs_'
 
@@ -78,6 +83,11 @@ const filteredThreads = computed(() => {
 
 function clearSearch() {
   searchQuery.value = ''
+}
+
+function handleLogout() {
+  clearAuth()
+  router.push('/login')
 }
 </script>
 
@@ -163,6 +173,19 @@ function clearSearch() {
         </svg>
         <span>新建对话</span>
       </button>
+
+      <!-- 用户信息 + 退出登录 -->
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">{{ (username || '?').charAt(0).toUpperCase() }}</div>
+        <span class="sidebar-user-name">{{ username }}</span>
+        <button class="sidebar-logout-btn" title="退出登录" @click="handleLogout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
@@ -372,6 +395,62 @@ function clearSearch() {
 .sidebar-new-btn:hover {
   background: var(--code-bg, #f4f3ec);
   border-color: var(--accent, #aa3bff);
+}
+
+/* ── 用户信息 + 退出 ── */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--code-bg, #f4f3ec);
+}
+
+.sidebar-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent, #aa3bff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sidebar-user-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h, #08060d);
+}
+
+.sidebar-logout-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text, #6b6375);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-logout-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
 }
 
 /* ── 骨架屏 ── */

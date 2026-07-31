@@ -1,13 +1,19 @@
 """检查点业务逻辑 —— 输入检查点列表 / 重放 / 分叉。"""
 from typing import Dict, List, Optional
+from diskcache import Cache
 
 from backend.api.schemas.checkpoint import CheckpointSummary, CheckpointHistoryResponse
-from backend.api.services.graph import get_graph
+from backend.api.services.graph import get_or_create_graph
 from backend.api.utils.exceptions import NotFoundException, ErrorCode
 from backend.api.utils.stream import _sse_stream
 from backend.config.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _tid(username: str, thread_id: str) -> str:
+    """将前端 thread_id 转换为内部隔离的 thread_id（username:thread_id）。"""
+    return f"{username}:{thread_id}"
 
 def _compute_leaf_for_inputs(
     input_snapshots: List[object],
@@ -65,11 +71,12 @@ def _compute_leaf_for_inputs(
     return result
 
 
-async def list_input_checkpoints(thread_id: str, limit: int = 50, offset: int = 0) -> CheckpointHistoryResponse:
+async def list_input_checkpoints(thread_id: str, cache: Cache, username: str, limit: int = 50, offset: int = 0) -> CheckpointHistoryResponse:
     
-    logger.info("获取输入检查点列表 | thread_id=%s | limit=%d | offset=%d", thread_id, limit, offset)
-    graph = get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    logger.info("获取输入检查点列表 | thread_id=%s | limit=%d | offset=%d | username=%s", thread_id, limit, offset, username)
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
+    config = {"configurable": {"thread_id": tid}}
 
     snapshots = []
     async for snapshot in graph.aget_state_history(config):
@@ -150,10 +157,11 @@ async def list_input_checkpoints(thread_id: str, limit: int = 50, offset: int = 
     )
 
 
-async def _check_checkpoint_exists(thread_id: str, checkpoint_id: str) -> None:
+async def _check_checkpoint_exists(thread_id: str, checkpoint_id: str, cache: Cache, username: str) -> None:
     """校验检查点是否存在，不存在则抛出 NotFoundException。"""
-    graph = get_graph()
-    config = {"configurable": {"thread_id": thread_id, "checkpoint_id": checkpoint_id}}
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
+    config = {"configurable": {"thread_id": tid, "checkpoint_id": checkpoint_id}}
     state = await graph.aget_state(config)
     if state is None or state.values is None:
         raise NotFoundException(
@@ -165,6 +173,8 @@ async def _check_checkpoint_exists(thread_id: str, checkpoint_id: str) -> None:
 async def replay_from_checkpoint(
     thread_id: str,
     checkpoint_id: str,
+    cache: Cache,
+    username: str,
     checkpoint_ns: str = "",
     messages: Optional[List[dict]] = None,
 ):
@@ -175,15 +185,16 @@ async def replay_from_checkpoint(
     - 遇到中断时仍会触发，前端通过 SSE interrupt 事件接收
     - 传入 messages 时作为新用户输入，触发模型重新生成
     """
-    logger.info("重放检查点 | thread_id=%s | checkpoint_id=%s | ns=%s | has_messages=%s",
-                thread_id, checkpoint_id, checkpoint_ns, messages is not None)
-    await _check_checkpoint_exists(thread_id, checkpoint_id)
-    graph = get_graph()
+    logger.info("重放检查点 | thread_id=%s | checkpoint_id=%s | ns=%s | has_messages=%s | username=%s",
+                thread_id, checkpoint_id, checkpoint_ns, messages is not None, username)
+    await _check_checkpoint_exists(thread_id, checkpoint_id, cache, username)
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
     input_data = {"messages": messages} if messages else None
     return _sse_stream(
         graph,
         input_data,
-        thread_id,
+        tid,
         checkpoint_id=checkpoint_id,
         checkpoint_ns=checkpoint_ns,
     )
@@ -192,6 +203,8 @@ async def replay_from_checkpoint(
 async def fork_from_checkpoint(
     thread_id: str,
     checkpoint_id: str,
+    cache: Cache,
+    username: str,
     checkpoint_ns: str = "",
     values: dict = None,
 ):
@@ -203,15 +216,16 @@ async def fork_from_checkpoint(
     values 示例：{"messages": [{"role": "user", "content": "hello"}]}
     空 dict 或 None 等同于纯重放。
     """
-    logger.info("分叉检查点 | thread_id=%s | checkpoint_id=%s | ns=%s", thread_id, checkpoint_id, checkpoint_ns)
-    await _check_checkpoint_exists(thread_id, checkpoint_id)
-    graph = get_graph()
+    logger.info("分叉检查点 | thread_id=%s | checkpoint_id=%s | ns=%s | username=%s", thread_id, checkpoint_id, checkpoint_ns, username)
+    await _check_checkpoint_exists(thread_id, checkpoint_id, cache, username)
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
 
     input_data = values if values else None
     return _sse_stream(
         graph,
         input_data,
-        thread_id,
+        tid,
         checkpoint_id=checkpoint_id,
         checkpoint_ns=checkpoint_ns,
     )

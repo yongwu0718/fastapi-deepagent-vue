@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LongTermPlan",
+  "description": "长期计划结构定义，包含多个目标及其子任务",
+  "type": "object",
+  "required": ["title", "start_date", "end_date", "goals"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "计划标题，如 2026 Q3 路线图"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "计划开始日期，格式 YYYY-MM-DD"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "计划结束日期，格式 YYYY-MM-DD"
+    },
+    "goals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/LongTermGoal" }
+    }
+  },
+  "$defs": {
+    "LongTermGoal": {
+      "type": "object",
+      "required": ["id", "name", "description", "deadline", "progress", "tasks"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "deadline": { "type": "string", "format": "date" },
+        "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "tasks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LongTermTask" }
+        }
+      }
+    },
+    "LongTermTask": {
+      "type": "object",
+      "required": ["id", "title", "start", "end", "duration_hours", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "duration_hours": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in-progress", "done"]
+        }
+      }
+    }
+  }
+}

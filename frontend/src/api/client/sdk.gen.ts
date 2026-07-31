@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { ChatEndpointChatThreadIdPostData, ChatEndpointChatThreadIdPostErrors, ChatEndpointChatThreadIdPostResponses, ChatStreamChatThreadIdStreamPostData, ChatStreamChatThreadIdStreamPostErrors, ChatStreamChatThreadIdStreamPostResponses, ChatWithFilesEndpointChatThreadIdWithFilesPostData, ChatWithFilesEndpointChatThreadIdWithFilesPostErrors, ChatWithFilesEndpointChatThreadIdWithFilesPostResponses, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostData, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostErrors, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetData, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CreateDirectoryEndpointApiFilesCreateDirectoryPostData, CreateDirectoryEndpointApiFilesCreateDirectoryPostErrors, CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostData, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostErrors, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses, CreateFileEndpointApiFilesCreateFilePostData, CreateFileEndpointApiFilesCreateFilePostErrors, CreateFileEndpointApiFilesCreateFilePostResponses, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostData, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostErrors, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostData, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteEndpointApiFilesDeleteDeleteData, DeleteEndpointApiFilesDeleteDeleteErrors, DeleteEndpointApiFilesDeleteDeleteResponses, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteData, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteErrors, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteData, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteRagEndpointApiRagDeletePostData, DeleteRagEndpointApiRagDeletePostErrors, DeleteRagEndpointApiRagDeletePostResponses, ForkCheckpointCheckpointsThreadIdForkPostData, ForkCheckpointCheckpointsThreadIdForkPostErrors, ForkCheckpointCheckpointsThreadIdForkPostResponses, GetFileEndpointApiFilesFileGetData, GetFileEndpointApiFilesFileGetErrors, GetFileEndpointApiFilesFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetData, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetData, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetData, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetRagConfigEndpointApiRagConfigGetData, GetRagConfigEndpointApiRagConfigGetResponses, GetSkillsSettingsSkillsGetData, GetSkillsSettingsSkillsGetResponses, HealthRagEndpointApiRagHealthGetData, HealthRagEndpointApiRagHealthGetResponses, ListCollectionsEndpointApiRagCollectionsGetData, ListCollectionsEndpointApiRagCollectionsGetResponses, ListDirectoryEndpointApiFilesListGetData, ListDirectoryEndpointApiFilesListGetErrors, ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetData, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListThreadsEndpointThreadsGetData, ListThreadsEndpointThreadsGetResponses, ModifyFileEndpointApiFilesModifyPutData, ModifyFileEndpointApiFilesModifyPutErrors, ModifyFileEndpointApiFilesModifyPutResponses, ModifyFileEndpointSettingsMemoryAndSkillModifyPutData, ModifyFileEndpointSettingsMemoryAndSkillModifyPutErrors, ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses, MoveEndpointApiFilesMovePutData, MoveEndpointApiFilesMovePutErrors, MoveEndpointApiFilesMovePutResponses, MoveEndpointSettingsMemoryAndSkillMovePutData, MoveEndpointSettingsMemoryAndSkillMovePutErrors, MoveEndpointSettingsMemoryAndSkillMovePutResponses, ProcessRagEndpointApiRagProcessPostData, ProcessRagEndpointApiRagProcessPostErrors, ProcessRagEndpointApiRagProcessPostResponses, ProcessUploadEndpointApiRagProcessUploadPostData, ProcessUploadEndpointApiRagProcessUploadPostErrors, ProcessUploadEndpointApiRagProcessUploadPostResponses, ReadFileEndpointApiFilesReadGetData, ReadFileEndpointApiFilesReadGetErrors, ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetData, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetData, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ReadModelConfigEndpointSettingsModelConfigReadGetResponses, RebuildSettingsRebuildPostData, RebuildSettingsRebuildPostResponses, RenameEndpointApiFilesRenamePutData, RenameEndpointApiFilesRenamePutErrors, RenameEndpointApiFilesRenamePutResponses, RenameEndpointSettingsMemoryAndSkillRenamePutData, RenameEndpointSettingsMemoryAndSkillRenamePutErrors, RenameEndpointSettingsMemoryAndSkillRenamePutResponses, ReplayCheckpointCheckpointsThreadIdReplayPostData, ReplayCheckpointCheckpointsThreadIdReplayPostErrors, ReplayCheckpointCheckpointsThreadIdReplayPostResponses, ResumeChatEndpointChatThreadIdResumePostData, ResumeChatEndpointChatThreadIdResumePostErrors, ResumeChatEndpointChatThreadIdResumePostResponses, SearchFilesEndpointApiFilesSearchGetData, SearchFilesEndpointApiFilesSearchGetErrors, SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetData, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, UpdateRagConfigEndpointApiRagConfigPutData, UpdateRagConfigEndpointApiRagConfigPutErrors, UpdateRagConfigEndpointApiRagConfigPutResponses, UpdateSkillsSettingsSkillsPutData, UpdateSkillsSettingsSkillsPutErrors, UpdateSkillsSettingsSkillsPutResponses, UploadFileEndpointApiFilesUploadPostData, UploadFileEndpointApiFilesUploadPostErrors, UploadFileEndpointApiFilesUploadPostResponses, UploadFileEndpointSettingsMemoryAndSkillUploadPostData, UploadFileEndpointSettingsMemoryAndSkillUploadPostErrors, UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses, WriteModelConfigEndpointSettingsModelConfigWritePutData, WriteModelConfigEndpointSettingsModelConfigWritePutErrors, WriteModelConfigEndpointSettingsModelConfigWritePutResponses } from './types.gen';
+import type { ChangeMyPasswordAuthChangePasswordPutData, ChangeMyPasswordAuthChangePasswordPutErrors, ChangeMyPasswordAuthChangePasswordPutResponses, ChatEndpointChatThreadIdPostData, ChatEndpointChatThreadIdPostErrors, ChatEndpointChatThreadIdPostResponses, ChatStreamChatThreadIdStreamPostData, ChatStreamChatThreadIdStreamPostErrors, ChatStreamChatThreadIdStreamPostResponses, ChatWithFilesEndpointChatThreadIdWithFilesPostData, ChatWithFilesEndpointChatThreadIdWithFilesPostErrors, ChatWithFilesEndpointChatThreadIdWithFilesPostResponses, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostData, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostErrors, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetData, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CreateDirectoryEndpointApiFilesCreateDirectoryPostData, CreateDirectoryEndpointApiFilesCreateDirectoryPostErrors, CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostData, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostErrors, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses, CreateFileEndpointApiFilesCreateFilePostData, CreateFileEndpointApiFilesCreateFilePostErrors, CreateFileEndpointApiFilesCreateFilePostResponses, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostData, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostErrors, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses, CreateUserAuthUsersPostData, CreateUserAuthUsersPostErrors, CreateUserAuthUsersPostResponses, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostData, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteEndpointApiFilesDeleteDeleteData, DeleteEndpointApiFilesDeleteDeleteErrors, DeleteEndpointApiFilesDeleteDeleteResponses, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteData, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteErrors, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteData, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteRagEndpointApiRagDeletePostData, DeleteRagEndpointApiRagDeletePostErrors, DeleteRagEndpointApiRagDeletePostResponses, ForkCheckpointCheckpointsThreadIdForkPostData, ForkCheckpointCheckpointsThreadIdForkPostErrors, ForkCheckpointCheckpointsThreadIdForkPostResponses, GetFileEndpointApiFilesFileGetData, GetFileEndpointApiFilesFileGetErrors, GetFileEndpointApiFilesFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetData, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetData, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetMeAuthMeGetData, GetMeAuthMeGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetData, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetRagConfigEndpointApiRagConfigGetData, GetRagConfigEndpointApiRagConfigGetResponses, GetSkillsSettingsSkillsGetData, GetSkillsSettingsSkillsGetResponses, HealthRagEndpointApiRagHealthGetData, HealthRagEndpointApiRagHealthGetResponses, ListCollectionsEndpointApiRagCollectionsGetData, ListCollectionsEndpointApiRagCollectionsGetResponses, ListDirectoryEndpointApiFilesListGetData, ListDirectoryEndpointApiFilesListGetErrors, ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetData, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListThreadsEndpointThreadsGetData, ListThreadsEndpointThreadsGetResponses, ListUsersAuthUsersGetData, ListUsersAuthUsersGetResponses, LoginAuthLoginPostData, LoginAuthLoginPostErrors, LoginAuthLoginPostResponses, ModifyFileEndpointApiFilesModifyPutData, ModifyFileEndpointApiFilesModifyPutErrors, ModifyFileEndpointApiFilesModifyPutResponses, ModifyFileEndpointSettingsMemoryAndSkillModifyPutData, ModifyFileEndpointSettingsMemoryAndSkillModifyPutErrors, ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses, MoveEndpointApiFilesMovePutData, MoveEndpointApiFilesMovePutErrors, MoveEndpointApiFilesMovePutResponses, MoveEndpointSettingsMemoryAndSkillMovePutData, MoveEndpointSettingsMemoryAndSkillMovePutErrors, MoveEndpointSettingsMemoryAndSkillMovePutResponses, ProcessRagEndpointApiRagProcessPostData, ProcessRagEndpointApiRagProcessPostErrors, ProcessRagEndpointApiRagProcessPostResponses, ProcessUploadEndpointApiRagProcessUploadPostData, ProcessUploadEndpointApiRagProcessUploadPostErrors, ProcessUploadEndpointApiRagProcessUploadPostResponses, ReadFileEndpointApiFilesReadGetData, ReadFileEndpointApiFilesReadGetErrors, ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetData, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetData, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ReadModelConfigEndpointSettingsModelConfigReadGetResponses, RebuildSettingsRebuildPostData, RebuildSettingsRebuildPostResponses, RegisterAuthRegisterPostData, RegisterAuthRegisterPostErrors, RegisterAuthRegisterPostResponses, RemoveUserAuthUsersUsernameDeleteData, RemoveUserAuthUsersUsernameDeleteErrors, RemoveUserAuthUsersUsernameDeleteResponses, RenameEndpointApiFilesRenamePutData, RenameEndpointApiFilesRenamePutErrors, RenameEndpointApiFilesRenamePutResponses, RenameEndpointSettingsMemoryAndSkillRenamePutData, RenameEndpointSettingsMemoryAndSkillRenamePutErrors, RenameEndpointSettingsMemoryAndSkillRenamePutResponses, ReplayCheckpointCheckpointsThreadIdReplayPostData, ReplayCheckpointCheckpointsThreadIdReplayPostErrors, ReplayCheckpointCheckpointsThreadIdReplayPostResponses, ResumeChatEndpointChatThreadIdResumePostData, ResumeChatEndpointChatThreadIdResumePostErrors, ResumeChatEndpointChatThreadIdResumePostResponses, SearchFilesEndpointApiFilesSearchGetData, SearchFilesEndpointApiFilesSearchGetErrors, SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetData, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, ToggleUserAuthUsersTogglePutData, ToggleUserAuthUsersTogglePutErrors, ToggleUserAuthUsersTogglePutResponses, UpdateRagConfigEndpointApiRagConfigPutData, UpdateRagConfigEndpointApiRagConfigPutErrors, UpdateRagConfigEndpointApiRagConfigPutResponses, UpdateSkillsSettingsSkillsPutData, UpdateSkillsSettingsSkillsPutErrors, UpdateSkillsSettingsSkillsPutResponses, UploadFileEndpointApiFilesUploadPostData, UploadFileEndpointApiFilesUploadPostErrors, UploadFileEndpointApiFilesUploadPostResponses, UploadFileEndpointSettingsMemoryAndSkillUploadPostData, UploadFileEndpointSettingsMemoryAndSkillUploadPostErrors, UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses, WriteModelConfigEndpointSettingsModelConfigWritePutData, WriteModelConfigEndpointSettingsModelConfigWritePutErrors, WriteModelConfigEndpointSettingsModelConfigWritePutResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,11 +19,120 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
+ * Login
+ *
+ * 用户登录，从数据库验证凭据，返回 JWT access token。
+ */
+export const loginAuthLoginPost = <ThrowOnError extends boolean = false>(options: Options<LoginAuthLoginPostData, ThrowOnError>): RequestResult<LoginAuthLoginPostResponses, LoginAuthLoginPostErrors, ThrowOnError> => (options.client ?? client).post<LoginAuthLoginPostResponses, LoginAuthLoginPostErrors, ThrowOnError>({
+    url: '/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Me
+ *
+ * 获取当前登录用户信息。
+ */
+export const getMeAuthMeGet = <ThrowOnError extends boolean = false>(options?: Options<GetMeAuthMeGetData, ThrowOnError>): RequestResult<GetMeAuthMeGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetMeAuthMeGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/me',
+    ...options
+});
+
+/**
+ * Register
+ *
+ * 新用户注册（无需登录），注册成功后自动签发 JWT。
+ *
+ * 需配置 ALLOW_REGISTRATION=true 才开放；用户名已存在时返回 409。
+ */
+export const registerAuthRegisterPost = <ThrowOnError extends boolean = false>(options: Options<RegisterAuthRegisterPostData, ThrowOnError>): RequestResult<RegisterAuthRegisterPostResponses, RegisterAuthRegisterPostErrors, ThrowOnError> => (options.client ?? client).post<RegisterAuthRegisterPostResponses, RegisterAuthRegisterPostErrors, ThrowOnError>({
+    url: '/auth/register',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List Users
+ *
+ * 列出所有用户。
+ */
+export const listUsersAuthUsersGet = <ThrowOnError extends boolean = false>(options?: Options<ListUsersAuthUsersGetData, ThrowOnError>): RequestResult<ListUsersAuthUsersGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListUsersAuthUsersGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/users',
+    ...options
+});
+
+/**
+ * Create User
+ *
+ * 创建新用户。
+ */
+export const createUserAuthUsersPost = <ThrowOnError extends boolean = false>(options: Options<CreateUserAuthUsersPostData, ThrowOnError>): RequestResult<CreateUserAuthUsersPostResponses, CreateUserAuthUsersPostErrors, ThrowOnError> => (options.client ?? client).post<CreateUserAuthUsersPostResponses, CreateUserAuthUsersPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/users',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove User
+ *
+ * 删除用户。
+ */
+export const removeUserAuthUsersUsernameDelete = <ThrowOnError extends boolean = false>(options: Options<RemoveUserAuthUsersUsernameDeleteData, ThrowOnError>): RequestResult<RemoveUserAuthUsersUsernameDeleteResponses, RemoveUserAuthUsersUsernameDeleteErrors, ThrowOnError> => (options.client ?? client).delete<RemoveUserAuthUsersUsernameDeleteResponses, RemoveUserAuthUsersUsernameDeleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/users/{username}',
+    ...options
+});
+
+/**
+ * Toggle User
+ *
+ * 启用或禁用用户。
+ */
+export const toggleUserAuthUsersTogglePut = <ThrowOnError extends boolean = false>(options: Options<ToggleUserAuthUsersTogglePutData, ThrowOnError>): RequestResult<ToggleUserAuthUsersTogglePutResponses, ToggleUserAuthUsersTogglePutErrors, ThrowOnError> => (options.client ?? client).put<ToggleUserAuthUsersTogglePutResponses, ToggleUserAuthUsersTogglePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/users/toggle',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Change My Password
+ *
+ * 当前用户修改自己的密码。
+ */
+export const changeMyPasswordAuthChangePasswordPut = <ThrowOnError extends boolean = false>(options: Options<ChangeMyPasswordAuthChangePasswordPutData, ThrowOnError>): RequestResult<ChangeMyPasswordAuthChangePasswordPutResponses, ChangeMyPasswordAuthChangePasswordPutErrors, ThrowOnError> => (options.client ?? client).put<ChangeMyPasswordAuthChangePasswordPutResponses, ChangeMyPasswordAuthChangePasswordPutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/auth/change-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Chat Endpoint
  *
  * 非流式聊天端点
  */
 export const chatEndpointChatThreadIdPost = <ThrowOnError extends boolean = false>(options: Options<ChatEndpointChatThreadIdPostData, ThrowOnError>): RequestResult<ChatEndpointChatThreadIdPostResponses, ChatEndpointChatThreadIdPostErrors, ThrowOnError> => (options.client ?? client).post<ChatEndpointChatThreadIdPostResponses, ChatEndpointChatThreadIdPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/chat/{thread_id}',
     ...options,
     headers: {
@@ -38,6 +147,7 @@ export const chatEndpointChatThreadIdPost = <ThrowOnError extends boolean = fals
  * 流式聊天端点（支持中断检测 & 检查点恢复）
  */
 export const chatStreamChatThreadIdStreamPost = <ThrowOnError extends boolean = false>(options: Options<ChatStreamChatThreadIdStreamPostData, ThrowOnError>): RequestResult<ChatStreamChatThreadIdStreamPostResponses, ChatStreamChatThreadIdStreamPostErrors, ThrowOnError> => (options.client ?? client).post<ChatStreamChatThreadIdStreamPostResponses, ChatStreamChatThreadIdStreamPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/chat/{thread_id}/stream',
     ...options,
     headers: {
@@ -52,6 +162,7 @@ export const chatStreamChatThreadIdStreamPost = <ThrowOnError extends boolean = 
  * 恢复中断的对话 —— 传入用户决策后继续流式返回结果
  */
 export const resumeChatEndpointChatThreadIdResumePost = <ThrowOnError extends boolean = false>(options: Options<ResumeChatEndpointChatThreadIdResumePostData, ThrowOnError>): RequestResult<ResumeChatEndpointChatThreadIdResumePostResponses, ResumeChatEndpointChatThreadIdResumePostErrors, ThrowOnError> => (options.client ?? client).post<ResumeChatEndpointChatThreadIdResumePostResponses, ResumeChatEndpointChatThreadIdResumePostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/chat/{thread_id}/resume',
     ...options,
     headers: {
@@ -67,6 +178,7 @@ export const resumeChatEndpointChatThreadIdResumePost = <ThrowOnError extends bo
  */
 export const chatWithFilesEndpointChatThreadIdWithFilesPost = <ThrowOnError extends boolean = false>(options: Options<ChatWithFilesEndpointChatThreadIdWithFilesPostData, ThrowOnError>): RequestResult<ChatWithFilesEndpointChatThreadIdWithFilesPostResponses, ChatWithFilesEndpointChatThreadIdWithFilesPostErrors, ThrowOnError> => (options.client ?? client).post<ChatWithFilesEndpointChatThreadIdWithFilesPostResponses, ChatWithFilesEndpointChatThreadIdWithFilesPostErrors, ThrowOnError>({
     ...formDataBodySerializer,
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/chat/{thread_id}/with-files',
     ...options,
     headers: {
@@ -82,6 +194,7 @@ export const chatWithFilesEndpointChatThreadIdWithFilesPost = <ThrowOnError exte
  */
 export const chatWithFilesStreamEndpointChatThreadIdWithFilesStreamPost = <ThrowOnError extends boolean = false>(options: Options<ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostData, ThrowOnError>): RequestResult<ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostResponses, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostErrors, ThrowOnError> => (options.client ?? client).post<ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostResponses, ChatWithFilesStreamEndpointChatThreadIdWithFilesStreamPostErrors, ThrowOnError>({
     ...formDataBodySerializer,
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/chat/{thread_id}/with-files/stream',
     ...options,
     headers: {
@@ -98,21 +211,33 @@ export const chatWithFilesStreamEndpointChatThreadIdWithFilesStreamPost = <Throw
  * - 不传 checkpoint_id：获取最新状态
  * - 传入 checkpoint_id：获取指定检查点对应的分支消息（用于树形分支导航）
  */
-export const getMessagesHistoryChatThreadIdGetMessagesHistoryGet = <ThrowOnError extends boolean = false>(options: Options<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetData, ThrowOnError>): RequestResult<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, ThrowOnError> => (options.client ?? client).get<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, ThrowOnError>({ url: '/chat/{thread_id}/get-messages-history', ...options });
+export const getMessagesHistoryChatThreadIdGetMessagesHistoryGet = <ThrowOnError extends boolean = false>(options: Options<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetData, ThrowOnError>): RequestResult<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, ThrowOnError> => (options.client ?? client).get<GetMessagesHistoryChatThreadIdGetMessagesHistoryGetResponses, GetMessagesHistoryChatThreadIdGetMessagesHistoryGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/chat/{thread_id}/get-messages-history',
+    ...options
+});
 
 /**
  * Delete Messages History
  *
  * 删除会话历史
  */
-export const deleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteData, ThrowOnError>): RequestResult<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, ThrowOnError>({ url: '/chat/{thread_id}/delete-messages-history', ...options });
+export const deleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteData, ThrowOnError>): RequestResult<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteResponses, DeleteMessagesHistoryChatThreadIdDeleteMessagesHistoryDeleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/chat/{thread_id}/delete-messages-history',
+    ...options
+});
 
 /**
  * List Threads Endpoint
  *
- * 列出所有对话线程
+ * 列出当前用户的所有对话线程
  */
-export const listThreadsEndpointThreadsGet = <ThrowOnError extends boolean = false>(options?: Options<ListThreadsEndpointThreadsGetData, ThrowOnError>): RequestResult<ListThreadsEndpointThreadsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListThreadsEndpointThreadsGetResponses, unknown, ThrowOnError>({ url: '/threads', ...options });
+export const listThreadsEndpointThreadsGet = <ThrowOnError extends boolean = false>(options?: Options<ListThreadsEndpointThreadsGetData, ThrowOnError>): RequestResult<ListThreadsEndpointThreadsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListThreadsEndpointThreadsGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/threads',
+    ...options
+});
 
 /**
  * Get Input Checkpoints
@@ -122,7 +247,11 @@ export const listThreadsEndpointThreadsGet = <ThrowOnError extends boolean = fal
  * 每次用户发送消息时 LangGraph 自动生成 input 检查点。
  * 前端可从中选择检查点进行 replay / fork 操作。
  */
-export const getInputCheckpointsCheckpointsThreadIdInputsGet = <ThrowOnError extends boolean = false>(options: Options<GetInputCheckpointsCheckpointsThreadIdInputsGetData, ThrowOnError>): RequestResult<GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, ThrowOnError> => (options.client ?? client).get<GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, ThrowOnError>({ url: '/checkpoints/{thread_id}/inputs', ...options });
+export const getInputCheckpointsCheckpointsThreadIdInputsGet = <ThrowOnError extends boolean = false>(options: Options<GetInputCheckpointsCheckpointsThreadIdInputsGetData, ThrowOnError>): RequestResult<GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, ThrowOnError> => (options.client ?? client).get<GetInputCheckpointsCheckpointsThreadIdInputsGetResponses, GetInputCheckpointsCheckpointsThreadIdInputsGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/checkpoints/{thread_id}/inputs',
+    ...options
+});
 
 /**
  * Replay Checkpoint
@@ -134,6 +263,7 @@ export const getInputCheckpointsCheckpointsThreadIdInputsGet = <ThrowOnError ext
  * 传入 messages 时注入用户输入，触发模型重新生成。
  */
 export const replayCheckpointCheckpointsThreadIdReplayPost = <ThrowOnError extends boolean = false>(options: Options<ReplayCheckpointCheckpointsThreadIdReplayPostData, ThrowOnError>): RequestResult<ReplayCheckpointCheckpointsThreadIdReplayPostResponses, ReplayCheckpointCheckpointsThreadIdReplayPostErrors, ThrowOnError> => (options.client ?? client).post<ReplayCheckpointCheckpointsThreadIdReplayPostResponses, ReplayCheckpointCheckpointsThreadIdReplayPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/checkpoints/{thread_id}/replay',
     ...options,
     headers: {
@@ -151,6 +281,7 @@ export const replayCheckpointCheckpointsThreadIdReplayPost = <ThrowOnError exten
  * 原始执行链完整保留，新分支独立发展，以 SSE 流式返回结果。
  */
 export const forkCheckpointCheckpointsThreadIdForkPost = <ThrowOnError extends boolean = false>(options: Options<ForkCheckpointCheckpointsThreadIdForkPostData, ThrowOnError>): RequestResult<ForkCheckpointCheckpointsThreadIdForkPostResponses, ForkCheckpointCheckpointsThreadIdForkPostErrors, ThrowOnError> => (options.client ?? client).post<ForkCheckpointCheckpointsThreadIdForkPostResponses, ForkCheckpointCheckpointsThreadIdForkPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/checkpoints/{thread_id}/fork',
     ...options,
     headers: {
@@ -164,28 +295,44 @@ export const forkCheckpointCheckpointsThreadIdForkPost = <ThrowOnError extends b
  *
  * 返回指定目录的文件和子目录列表（文件夹优先、按名称排序）。
  */
-export const listDirectoryEndpointApiFilesListGet = <ThrowOnError extends boolean = false>(options?: Options<ListDirectoryEndpointApiFilesListGetData, ThrowOnError>): RequestResult<ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointApiFilesListGetErrors, ThrowOnError> => (options?.client ?? client).get<ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointApiFilesListGetErrors, ThrowOnError>({ url: '/api/files/list', ...options });
+export const listDirectoryEndpointApiFilesListGet = <ThrowOnError extends boolean = false>(options?: Options<ListDirectoryEndpointApiFilesListGetData, ThrowOnError>): RequestResult<ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointApiFilesListGetErrors, ThrowOnError> => (options?.client ?? client).get<ListDirectoryEndpointApiFilesListGetResponses, ListDirectoryEndpointApiFilesListGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/files/list',
+    ...options
+});
 
 /**
  * Get File Endpoint
  *
  * 读取文件内容，直接返回文件（支持浏览器预览或下载）。
  */
-export const getFileEndpointApiFilesFileGet = <ThrowOnError extends boolean = false>(options: Options<GetFileEndpointApiFilesFileGetData, ThrowOnError>): RequestResult<GetFileEndpointApiFilesFileGetResponses, GetFileEndpointApiFilesFileGetErrors, ThrowOnError> => (options.client ?? client).get<GetFileEndpointApiFilesFileGetResponses, GetFileEndpointApiFilesFileGetErrors, ThrowOnError>({ url: '/api/files/file', ...options });
+export const getFileEndpointApiFilesFileGet = <ThrowOnError extends boolean = false>(options: Options<GetFileEndpointApiFilesFileGetData, ThrowOnError>): RequestResult<GetFileEndpointApiFilesFileGetResponses, GetFileEndpointApiFilesFileGetErrors, ThrowOnError> => (options.client ?? client).get<GetFileEndpointApiFilesFileGetResponses, GetFileEndpointApiFilesFileGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/files/file',
+    ...options
+});
 
 /**
  * Read File Endpoint
  *
  * 读取文件内容，返回 JSON（含内容、类型、是否可编辑）。
  */
-export const readFileEndpointApiFilesReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadFileEndpointApiFilesReadGetData, ThrowOnError>): RequestResult<ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointApiFilesReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointApiFilesReadGetErrors, ThrowOnError>({ url: '/api/files/read', ...options });
+export const readFileEndpointApiFilesReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadFileEndpointApiFilesReadGetData, ThrowOnError>): RequestResult<ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointApiFilesReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadFileEndpointApiFilesReadGetResponses, ReadFileEndpointApiFilesReadGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/files/read',
+    ...options
+});
 
 /**
  * Search Files Endpoint
  *
  * 递归搜索根目录下所有匹配名称的文件和目录。
  */
-export const searchFilesEndpointApiFilesSearchGet = <ThrowOnError extends boolean = false>(options: Options<SearchFilesEndpointApiFilesSearchGetData, ThrowOnError>): RequestResult<SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointApiFilesSearchGetErrors, ThrowOnError> => (options.client ?? client).get<SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointApiFilesSearchGetErrors, ThrowOnError>({ url: '/api/files/search', ...options });
+export const searchFilesEndpointApiFilesSearchGet = <ThrowOnError extends boolean = false>(options: Options<SearchFilesEndpointApiFilesSearchGetData, ThrowOnError>): RequestResult<SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointApiFilesSearchGetErrors, ThrowOnError> => (options.client ?? client).get<SearchFilesEndpointApiFilesSearchGetResponses, SearchFilesEndpointApiFilesSearchGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/files/search',
+    ...options
+});
 
 /**
  * Create File Endpoint
@@ -193,6 +340,7 @@ export const searchFilesEndpointApiFilesSearchGet = <ThrowOnError extends boolea
  * 创建新文件（可指定初始内容）。
  */
 export const createFileEndpointApiFilesCreateFilePost = <ThrowOnError extends boolean = false>(options: Options<CreateFileEndpointApiFilesCreateFilePostData, ThrowOnError>): RequestResult<CreateFileEndpointApiFilesCreateFilePostResponses, CreateFileEndpointApiFilesCreateFilePostErrors, ThrowOnError> => (options.client ?? client).post<CreateFileEndpointApiFilesCreateFilePostResponses, CreateFileEndpointApiFilesCreateFilePostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/create-file',
     ...options,
     headers: {
@@ -207,6 +355,7 @@ export const createFileEndpointApiFilesCreateFilePost = <ThrowOnError extends bo
  * 创建新目录。
  */
 export const createDirectoryEndpointApiFilesCreateDirectoryPost = <ThrowOnError extends boolean = false>(options: Options<CreateDirectoryEndpointApiFilesCreateDirectoryPostData, ThrowOnError>): RequestResult<CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses, CreateDirectoryEndpointApiFilesCreateDirectoryPostErrors, ThrowOnError> => (options.client ?? client).post<CreateDirectoryEndpointApiFilesCreateDirectoryPostResponses, CreateDirectoryEndpointApiFilesCreateDirectoryPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/create-directory',
     ...options,
     headers: {
@@ -222,6 +371,7 @@ export const createDirectoryEndpointApiFilesCreateDirectoryPost = <ThrowOnError 
  */
 export const uploadFileEndpointApiFilesUploadPost = <ThrowOnError extends boolean = false>(options: Options<UploadFileEndpointApiFilesUploadPostData, ThrowOnError>): RequestResult<UploadFileEndpointApiFilesUploadPostResponses, UploadFileEndpointApiFilesUploadPostErrors, ThrowOnError> => (options.client ?? client).post<UploadFileEndpointApiFilesUploadPostResponses, UploadFileEndpointApiFilesUploadPostErrors, ThrowOnError>({
     ...formDataBodySerializer,
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/upload',
     ...options,
     headers: {
@@ -236,6 +386,7 @@ export const uploadFileEndpointApiFilesUploadPost = <ThrowOnError extends boolea
  * 重命名文件或目录。
  */
 export const renameEndpointApiFilesRenamePut = <ThrowOnError extends boolean = false>(options: Options<RenameEndpointApiFilesRenamePutData, ThrowOnError>): RequestResult<RenameEndpointApiFilesRenamePutResponses, RenameEndpointApiFilesRenamePutErrors, ThrowOnError> => (options.client ?? client).put<RenameEndpointApiFilesRenamePutResponses, RenameEndpointApiFilesRenamePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/rename',
     ...options,
     headers: {
@@ -250,6 +401,7 @@ export const renameEndpointApiFilesRenamePut = <ThrowOnError extends boolean = f
  * 移动文件或目录到目标目录。
  */
 export const moveEndpointApiFilesMovePut = <ThrowOnError extends boolean = false>(options: Options<MoveEndpointApiFilesMovePutData, ThrowOnError>): RequestResult<MoveEndpointApiFilesMovePutResponses, MoveEndpointApiFilesMovePutErrors, ThrowOnError> => (options.client ?? client).put<MoveEndpointApiFilesMovePutResponses, MoveEndpointApiFilesMovePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/move',
     ...options,
     headers: {
@@ -264,6 +416,7 @@ export const moveEndpointApiFilesMovePut = <ThrowOnError extends boolean = false
  * 修改文件内容（覆盖写入）。
  */
 export const modifyFileEndpointApiFilesModifyPut = <ThrowOnError extends boolean = false>(options: Options<ModifyFileEndpointApiFilesModifyPutData, ThrowOnError>): RequestResult<ModifyFileEndpointApiFilesModifyPutResponses, ModifyFileEndpointApiFilesModifyPutErrors, ThrowOnError> => (options.client ?? client).put<ModifyFileEndpointApiFilesModifyPutResponses, ModifyFileEndpointApiFilesModifyPutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/modify',
     ...options,
     headers: {
@@ -278,6 +431,7 @@ export const modifyFileEndpointApiFilesModifyPut = <ThrowOnError extends boolean
  * 删除文件或目录（递归删除目录及其所有内容）。
  */
 export const deleteEndpointApiFilesDeleteDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteEndpointApiFilesDeleteDeleteData, ThrowOnError>): RequestResult<DeleteEndpointApiFilesDeleteDeleteResponses, DeleteEndpointApiFilesDeleteDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteEndpointApiFilesDeleteDeleteResponses, DeleteEndpointApiFilesDeleteDeleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/files/delete',
     ...options,
     headers: {
@@ -289,16 +443,21 @@ export const deleteEndpointApiFilesDeleteDelete = <ThrowOnError extends boolean 
 /**
  * Read Model Config Endpoint
  *
- * 读取指定配置文件内容。
+ * 读取指定配置文件内容（用户隔离）。
  */
-export const readModelConfigEndpointSettingsModelConfigReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadModelConfigEndpointSettingsModelConfigReadGetData, ThrowOnError>): RequestResult<ReadModelConfigEndpointSettingsModelConfigReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadModelConfigEndpointSettingsModelConfigReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ThrowOnError>({ url: '/settings/model-config/read', ...options });
+export const readModelConfigEndpointSettingsModelConfigReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadModelConfigEndpointSettingsModelConfigReadGetData, ThrowOnError>): RequestResult<ReadModelConfigEndpointSettingsModelConfigReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadModelConfigEndpointSettingsModelConfigReadGetResponses, ReadModelConfigEndpointSettingsModelConfigReadGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/model-config/read',
+    ...options
+});
 
 /**
  * Write Model Config Endpoint
  *
- * 覆写指定配置文件内容。
+ * 覆写指定配置（写入用户缓存）。
  */
 export const writeModelConfigEndpointSettingsModelConfigWritePut = <ThrowOnError extends boolean = false>(options: Options<WriteModelConfigEndpointSettingsModelConfigWritePutData, ThrowOnError>): RequestResult<WriteModelConfigEndpointSettingsModelConfigWritePutResponses, WriteModelConfigEndpointSettingsModelConfigWritePutErrors, ThrowOnError> => (options.client ?? client).put<WriteModelConfigEndpointSettingsModelConfigWritePutResponses, WriteModelConfigEndpointSettingsModelConfigWritePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/model-config/write',
     ...options,
     headers: {
@@ -310,9 +469,13 @@ export const writeModelConfigEndpointSettingsModelConfigWritePut = <ThrowOnError
 /**
  * Get Skills
  *
- * 获取所有 skill 及其启用状态。
+ * 获取所有 skill 及其启用状态（用户隔离）。
  */
-export const getSkillsSettingsSkillsGet = <ThrowOnError extends boolean = false>(options?: Options<GetSkillsSettingsSkillsGetData, ThrowOnError>): RequestResult<GetSkillsSettingsSkillsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSkillsSettingsSkillsGetResponses, unknown, ThrowOnError>({ url: '/settings/skills', ...options });
+export const getSkillsSettingsSkillsGet = <ThrowOnError extends boolean = false>(options?: Options<GetSkillsSettingsSkillsGetData, ThrowOnError>): RequestResult<GetSkillsSettingsSkillsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSkillsSettingsSkillsGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/skills',
+    ...options
+});
 
 /**
  * Update Skills
@@ -320,6 +483,7 @@ export const getSkillsSettingsSkillsGet = <ThrowOnError extends boolean = false>
  * 更新启用的 skill 列表并重建 Graph。
  */
 export const updateSkillsSettingsSkillsPut = <ThrowOnError extends boolean = false>(options: Options<UpdateSkillsSettingsSkillsPutData, ThrowOnError>): RequestResult<UpdateSkillsSettingsSkillsPutResponses, UpdateSkillsSettingsSkillsPutErrors, ThrowOnError> => (options.client ?? client).put<UpdateSkillsSettingsSkillsPutResponses, UpdateSkillsSettingsSkillsPutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/skills',
     ...options,
     headers: {
@@ -331,44 +495,55 @@ export const updateSkillsSettingsSkillsPut = <ThrowOnError extends boolean = fal
 /**
  * Rebuild
  *
- * 重新编译 LangGraph，使配置生效。
+ * 重新编译当前用户的 LangGraph，使配置生效。
  */
-export const rebuildSettingsRebuildPost = <ThrowOnError extends boolean = false>(options?: Options<RebuildSettingsRebuildPostData, ThrowOnError>): RequestResult<RebuildSettingsRebuildPostResponses, unknown, ThrowOnError> => (options?.client ?? client).post<RebuildSettingsRebuildPostResponses, unknown, ThrowOnError>({ url: '/settings/rebuild', ...options });
+export const rebuildSettingsRebuildPost = <ThrowOnError extends boolean = false>(options?: Options<RebuildSettingsRebuildPostData, ThrowOnError>): RequestResult<RebuildSettingsRebuildPostResponses, unknown, ThrowOnError> => (options?.client ?? client).post<RebuildSettingsRebuildPostResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/rebuild',
+    ...options
+});
 
 /**
  * List Directory Endpoint
- *
- * 返回指定目录的文件和子目录列表（文件夹优先、按名称排序）。
  */
-export const listDirectoryEndpointSettingsMemoryAndSkillListGet = <ThrowOnError extends boolean = false>(options: Options<ListDirectoryEndpointSettingsMemoryAndSkillListGetData, ThrowOnError>): RequestResult<ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ThrowOnError> => (options.client ?? client).get<ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ThrowOnError>({ url: '/settings/memory-and-skill/list', ...options });
+export const listDirectoryEndpointSettingsMemoryAndSkillListGet = <ThrowOnError extends boolean = false>(options: Options<ListDirectoryEndpointSettingsMemoryAndSkillListGetData, ThrowOnError>): RequestResult<ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ThrowOnError> => (options.client ?? client).get<ListDirectoryEndpointSettingsMemoryAndSkillListGetResponses, ListDirectoryEndpointSettingsMemoryAndSkillListGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/memory-and-skill/list',
+    ...options
+});
 
 /**
  * Get File Endpoint
- *
- * 读取文件内容，直接返回文件（支持浏览器预览或下载）。
  */
-export const getFileEndpointSettingsMemoryAndSkillFileGet = <ThrowOnError extends boolean = false>(options: Options<GetFileEndpointSettingsMemoryAndSkillFileGetData, ThrowOnError>): RequestResult<GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, ThrowOnError> => (options.client ?? client).get<GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, ThrowOnError>({ url: '/settings/memory-and-skill/file', ...options });
+export const getFileEndpointSettingsMemoryAndSkillFileGet = <ThrowOnError extends boolean = false>(options: Options<GetFileEndpointSettingsMemoryAndSkillFileGetData, ThrowOnError>): RequestResult<GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, ThrowOnError> => (options.client ?? client).get<GetFileEndpointSettingsMemoryAndSkillFileGetResponses, GetFileEndpointSettingsMemoryAndSkillFileGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/memory-and-skill/file',
+    ...options
+});
 
 /**
  * Read File Endpoint
- *
- * 读取文件内容，返回 JSON（含内容、类型、是否可编辑）。
  */
-export const readFileEndpointSettingsMemoryAndSkillReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadFileEndpointSettingsMemoryAndSkillReadGetData, ThrowOnError>): RequestResult<ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ThrowOnError>({ url: '/settings/memory-and-skill/read', ...options });
+export const readFileEndpointSettingsMemoryAndSkillReadGet = <ThrowOnError extends boolean = false>(options: Options<ReadFileEndpointSettingsMemoryAndSkillReadGetData, ThrowOnError>): RequestResult<ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ThrowOnError> => (options.client ?? client).get<ReadFileEndpointSettingsMemoryAndSkillReadGetResponses, ReadFileEndpointSettingsMemoryAndSkillReadGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/memory-and-skill/read',
+    ...options
+});
 
 /**
  * Search Files Endpoint
- *
- * 递归搜索根目录下所有匹配名称的文件和目录。
  */
-export const searchFilesEndpointSettingsMemoryAndSkillSearchGet = <ThrowOnError extends boolean = false>(options: Options<SearchFilesEndpointSettingsMemoryAndSkillSearchGetData, ThrowOnError>): RequestResult<SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, ThrowOnError> => (options.client ?? client).get<SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, ThrowOnError>({ url: '/settings/memory-and-skill/search', ...options });
+export const searchFilesEndpointSettingsMemoryAndSkillSearchGet = <ThrowOnError extends boolean = false>(options: Options<SearchFilesEndpointSettingsMemoryAndSkillSearchGetData, ThrowOnError>): RequestResult<SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, ThrowOnError> => (options.client ?? client).get<SearchFilesEndpointSettingsMemoryAndSkillSearchGetResponses, SearchFilesEndpointSettingsMemoryAndSkillSearchGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/settings/memory-and-skill/search',
+    ...options
+});
 
 /**
  * Create File Endpoint
- *
- * 创建新文件（可指定初始内容）。
  */
 export const createFileEndpointSettingsMemoryAndSkillCreateFilePost = <ThrowOnError extends boolean = false>(options: Options<CreateFileEndpointSettingsMemoryAndSkillCreateFilePostData, ThrowOnError>): RequestResult<CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostErrors, ThrowOnError> => (options.client ?? client).post<CreateFileEndpointSettingsMemoryAndSkillCreateFilePostResponses, CreateFileEndpointSettingsMemoryAndSkillCreateFilePostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/create-file',
     ...options,
     headers: {
@@ -379,10 +554,9 @@ export const createFileEndpointSettingsMemoryAndSkillCreateFilePost = <ThrowOnEr
 
 /**
  * Create Directory Endpoint
- *
- * 创建新目录。
  */
 export const createDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPost = <ThrowOnError extends boolean = false>(options: Options<CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostData, ThrowOnError>): RequestResult<CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostErrors, ThrowOnError> => (options.client ?? client).post<CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostResponses, CreateDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/create-directory',
     ...options,
     headers: {
@@ -393,11 +567,10 @@ export const createDirectoryEndpointSettingsMemoryAndSkillCreateDirectoryPost = 
 
 /**
  * Upload File Endpoint
- *
- * 上传文件到指定路径。
  */
 export const uploadFileEndpointSettingsMemoryAndSkillUploadPost = <ThrowOnError extends boolean = false>(options: Options<UploadFileEndpointSettingsMemoryAndSkillUploadPostData, ThrowOnError>): RequestResult<UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses, UploadFileEndpointSettingsMemoryAndSkillUploadPostErrors, ThrowOnError> => (options.client ?? client).post<UploadFileEndpointSettingsMemoryAndSkillUploadPostResponses, UploadFileEndpointSettingsMemoryAndSkillUploadPostErrors, ThrowOnError>({
     ...formDataBodySerializer,
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/upload',
     ...options,
     headers: {
@@ -408,10 +581,9 @@ export const uploadFileEndpointSettingsMemoryAndSkillUploadPost = <ThrowOnError 
 
 /**
  * Rename Endpoint
- *
- * 重命名文件或目录。
  */
 export const renameEndpointSettingsMemoryAndSkillRenamePut = <ThrowOnError extends boolean = false>(options: Options<RenameEndpointSettingsMemoryAndSkillRenamePutData, ThrowOnError>): RequestResult<RenameEndpointSettingsMemoryAndSkillRenamePutResponses, RenameEndpointSettingsMemoryAndSkillRenamePutErrors, ThrowOnError> => (options.client ?? client).put<RenameEndpointSettingsMemoryAndSkillRenamePutResponses, RenameEndpointSettingsMemoryAndSkillRenamePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/rename',
     ...options,
     headers: {
@@ -422,10 +594,9 @@ export const renameEndpointSettingsMemoryAndSkillRenamePut = <ThrowOnError exten
 
 /**
  * Move Endpoint
- *
- * 移动文件或目录到目标目录。
  */
 export const moveEndpointSettingsMemoryAndSkillMovePut = <ThrowOnError extends boolean = false>(options: Options<MoveEndpointSettingsMemoryAndSkillMovePutData, ThrowOnError>): RequestResult<MoveEndpointSettingsMemoryAndSkillMovePutResponses, MoveEndpointSettingsMemoryAndSkillMovePutErrors, ThrowOnError> => (options.client ?? client).put<MoveEndpointSettingsMemoryAndSkillMovePutResponses, MoveEndpointSettingsMemoryAndSkillMovePutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/move',
     ...options,
     headers: {
@@ -436,10 +607,9 @@ export const moveEndpointSettingsMemoryAndSkillMovePut = <ThrowOnError extends b
 
 /**
  * Modify File Endpoint
- *
- * 修改文件内容（覆盖写入）。
  */
 export const modifyFileEndpointSettingsMemoryAndSkillModifyPut = <ThrowOnError extends boolean = false>(options: Options<ModifyFileEndpointSettingsMemoryAndSkillModifyPutData, ThrowOnError>): RequestResult<ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses, ModifyFileEndpointSettingsMemoryAndSkillModifyPutErrors, ThrowOnError> => (options.client ?? client).put<ModifyFileEndpointSettingsMemoryAndSkillModifyPutResponses, ModifyFileEndpointSettingsMemoryAndSkillModifyPutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/modify',
     ...options,
     headers: {
@@ -450,10 +620,9 @@ export const modifyFileEndpointSettingsMemoryAndSkillModifyPut = <ThrowOnError e
 
 /**
  * Delete Endpoint
- *
- * 删除文件或目录（递归删除目录及其所有内容）。
  */
 export const deleteEndpointSettingsMemoryAndSkillDeleteDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteEndpointSettingsMemoryAndSkillDeleteDeleteData, ThrowOnError>): RequestResult<DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteEndpointSettingsMemoryAndSkillDeleteDeleteResponses, DeleteEndpointSettingsMemoryAndSkillDeleteDeleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/settings/memory-and-skill/delete',
     ...options,
     headers: {
@@ -468,6 +637,7 @@ export const deleteEndpointSettingsMemoryAndSkillDeleteDelete = <ThrowOnError ex
  * 通过文件路径处理 .md 文档（JSON body 模式）。
  */
 export const processRagEndpointApiRagProcessPost = <ThrowOnError extends boolean = false>(options: Options<ProcessRagEndpointApiRagProcessPostData, ThrowOnError>): RequestResult<ProcessRagEndpointApiRagProcessPostResponses, ProcessRagEndpointApiRagProcessPostErrors, ThrowOnError> => (options.client ?? client).post<ProcessRagEndpointApiRagProcessPostResponses, ProcessRagEndpointApiRagProcessPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/rag/process',
     ...options,
     headers: {
@@ -483,6 +653,7 @@ export const processRagEndpointApiRagProcessPost = <ThrowOnError extends boolean
  */
 export const processUploadEndpointApiRagProcessUploadPost = <ThrowOnError extends boolean = false>(options: Options<ProcessUploadEndpointApiRagProcessUploadPostData, ThrowOnError>): RequestResult<ProcessUploadEndpointApiRagProcessUploadPostResponses, ProcessUploadEndpointApiRagProcessUploadPostErrors, ThrowOnError> => (options.client ?? client).post<ProcessUploadEndpointApiRagProcessUploadPostResponses, ProcessUploadEndpointApiRagProcessUploadPostErrors, ThrowOnError>({
     ...formDataBodySerializer,
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/rag/process/upload',
     ...options,
     headers: {
@@ -497,6 +668,7 @@ export const processUploadEndpointApiRagProcessUploadPost = <ThrowOnError extend
  * 按 ID 从向量库中删除文档。
  */
 export const deleteRagEndpointApiRagDeletePost = <ThrowOnError extends boolean = false>(options: Options<DeleteRagEndpointApiRagDeletePostData, ThrowOnError>): RequestResult<DeleteRagEndpointApiRagDeletePostResponses, DeleteRagEndpointApiRagDeletePostErrors, ThrowOnError> => (options.client ?? client).post<DeleteRagEndpointApiRagDeletePostResponses, DeleteRagEndpointApiRagDeletePostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/rag/delete',
     ...options,
     headers: {
@@ -510,14 +682,22 @@ export const deleteRagEndpointApiRagDeletePost = <ThrowOnError extends boolean =
  *
  * 检查向量库健康状态。
  */
-export const healthRagEndpointApiRagHealthGet = <ThrowOnError extends boolean = false>(options?: Options<HealthRagEndpointApiRagHealthGetData, ThrowOnError>): RequestResult<HealthRagEndpointApiRagHealthGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<HealthRagEndpointApiRagHealthGetResponses, unknown, ThrowOnError>({ url: '/api/rag/health', ...options });
+export const healthRagEndpointApiRagHealthGet = <ThrowOnError extends boolean = false>(options?: Options<HealthRagEndpointApiRagHealthGetData, ThrowOnError>): RequestResult<HealthRagEndpointApiRagHealthGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<HealthRagEndpointApiRagHealthGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/health',
+    ...options
+});
 
 /**
  * Get Rag Config Endpoint
  *
  * 读取 rag_config.yaml 完整配置。
  */
-export const getRagConfigEndpointApiRagConfigGet = <ThrowOnError extends boolean = false>(options?: Options<GetRagConfigEndpointApiRagConfigGetData, ThrowOnError>): RequestResult<GetRagConfigEndpointApiRagConfigGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetRagConfigEndpointApiRagConfigGetResponses, unknown, ThrowOnError>({ url: '/api/rag/config', ...options });
+export const getRagConfigEndpointApiRagConfigGet = <ThrowOnError extends boolean = false>(options?: Options<GetRagConfigEndpointApiRagConfigGetData, ThrowOnError>): RequestResult<GetRagConfigEndpointApiRagConfigGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetRagConfigEndpointApiRagConfigGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/config',
+    ...options
+});
 
 /**
  * Update Rag Config Endpoint
@@ -525,6 +705,7 @@ export const getRagConfigEndpointApiRagConfigGet = <ThrowOnError extends boolean
  * 覆写 rag_config.yaml，自动重载运行时配置。
  */
 export const updateRagConfigEndpointApiRagConfigPut = <ThrowOnError extends boolean = false>(options: Options<UpdateRagConfigEndpointApiRagConfigPutData, ThrowOnError>): RequestResult<UpdateRagConfigEndpointApiRagConfigPutResponses, UpdateRagConfigEndpointApiRagConfigPutErrors, ThrowOnError> => (options.client ?? client).put<UpdateRagConfigEndpointApiRagConfigPutResponses, UpdateRagConfigEndpointApiRagConfigPutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/rag/config',
     ...options,
     headers: {
@@ -538,21 +719,33 @@ export const updateRagConfigEndpointApiRagConfigPut = <ThrowOnError extends bool
  *
  * 列出 ChromaDB 中所有集合。
  */
-export const listCollectionsEndpointApiRagCollectionsGet = <ThrowOnError extends boolean = false>(options?: Options<ListCollectionsEndpointApiRagCollectionsGetData, ThrowOnError>): RequestResult<ListCollectionsEndpointApiRagCollectionsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListCollectionsEndpointApiRagCollectionsGetResponses, unknown, ThrowOnError>({ url: '/api/rag/collections', ...options });
+export const listCollectionsEndpointApiRagCollectionsGet = <ThrowOnError extends boolean = false>(options?: Options<ListCollectionsEndpointApiRagCollectionsGetData, ThrowOnError>): RequestResult<ListCollectionsEndpointApiRagCollectionsGetResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListCollectionsEndpointApiRagCollectionsGetResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/collections',
+    ...options
+});
 
 /**
  * Collection Stats Endpoint
  *
  * 获取指定集合的统计信息（文档数、非空率、平均长度、向量维度、元数据覆盖率）。
  */
-export const collectionStatsEndpointApiRagCollectionCollectionNameStatsGet = <ThrowOnError extends boolean = false>(options: Options<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData, ThrowOnError>): RequestResult<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, ThrowOnError> => (options.client ?? client).get<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, ThrowOnError>({ url: '/api/rag/collection/{collection_name}/stats', ...options });
+export const collectionStatsEndpointApiRagCollectionCollectionNameStatsGet = <ThrowOnError extends boolean = false>(options: Options<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetData, ThrowOnError>): RequestResult<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, ThrowOnError> => (options.client ?? client).get<CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetResponses, CollectionStatsEndpointApiRagCollectionCollectionNameStatsGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/collection/{collection_name}/stats',
+    ...options
+});
 
 /**
  * Collection Documents Endpoint
  *
  * 分页获取集合中的文档（ID、内容、元数据）。
  */
-export const collectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGet = <ThrowOnError extends boolean = false>(options: Options<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetData, ThrowOnError>): RequestResult<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, ThrowOnError> => (options.client ?? client).get<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, ThrowOnError>({ url: '/api/rag/collection/{collection_name}/documents', ...options });
+export const collectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGet = <ThrowOnError extends boolean = false>(options: Options<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetData, ThrowOnError>): RequestResult<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, ThrowOnError> => (options.client ?? client).get<CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetResponses, CollectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsGetErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/collection/{collection_name}/documents',
+    ...options
+});
 
 /**
  * Delete Collection Docs Endpoint
@@ -560,6 +753,7 @@ export const collectionDocumentsEndpointApiRagCollectionCollectionNameDocumentsG
  * 从指定集合中批量删除文档。
  */
 export const deleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPost = <ThrowOnError extends boolean = false>(options: Options<DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostData, ThrowOnError>): RequestResult<DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors, ThrowOnError> => (options.client ?? client).post<DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostResponses, DeleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDocsPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/rag/collection/{collection_name}/delete-docs',
     ...options,
     headers: {
@@ -573,11 +767,19 @@ export const deleteCollectionDocsEndpointApiRagCollectionCollectionNameDeleteDoc
  *
  * 清空集合中的所有文档。
  */
-export const clearCollectionEndpointApiRagCollectionCollectionNameClearPost = <ThrowOnError extends boolean = false>(options: Options<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData, ThrowOnError>): RequestResult<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ThrowOnError> => (options.client ?? client).post<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ThrowOnError>({ url: '/api/rag/collection/{collection_name}/clear', ...options });
+export const clearCollectionEndpointApiRagCollectionCollectionNameClearPost = <ThrowOnError extends boolean = false>(options: Options<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostData, ThrowOnError>): RequestResult<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ThrowOnError> => (options.client ?? client).post<ClearCollectionEndpointApiRagCollectionCollectionNameClearPostResponses, ClearCollectionEndpointApiRagCollectionCollectionNameClearPostErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/collection/{collection_name}/clear',
+    ...options
+});
 
 /**
  * Delete Collection Endpoint
  *
  * 删除整个集合。
  */
-export const deleteCollectionEndpointApiRagCollectionCollectionNameDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData, ThrowOnError>): RequestResult<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, ThrowOnError>({ url: '/api/rag/collection/{collection_name}', ...options });
+export const deleteCollectionEndpointApiRagCollectionCollectionNameDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteData, ThrowOnError>): RequestResult<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteResponses, DeleteCollectionEndpointApiRagCollectionCollectionNameDeleteErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/rag/collection/{collection_name}',
+    ...options
+});

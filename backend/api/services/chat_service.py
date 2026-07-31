@@ -5,8 +5,9 @@ import os
 from typing import List, Optional
 
 from langgraph.types import Command
+from diskcache import Cache
 
-from backend.api.services.graph import get_graph
+from backend.api.services.graph import get_or_create_graph
 from backend.api.utils.dict2json import dump_messages, langchain_result_to_response
 from backend.api.utils.stream import _sse_stream
 from backend.api.utils.file_handler import (
@@ -22,18 +23,24 @@ from backend.config.observability import build_langfuse_config
 logger = get_logger(__name__)
 
 
-async def invoke_chat(chat_request: ChatRequest, thread_id: str):
+def _tid(username: str, thread_id: str) -> str:
+    """将前端 thread_id 转换为内部隔离的 thread_id（username:thread_id）。"""
+    return f"{username}:{thread_id}"
+
+
+async def invoke_chat(chat_request: ChatRequest, thread_id: str, cache: Cache, username: str):
     """非流式聊天"""
-    logger.info("非流式聊天 | thread_id=%s | messages=%d", thread_id, len(chat_request.messages))
+    logger.info("非流式聊天 | thread_id=%s | messages=%d | username=%s", thread_id, len(chat_request.messages), username)
     dict_messages = dump_messages(chat_request.messages)
-    graph = get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
+    config = {"configurable": {"thread_id": tid}}
     if chat_request.checkpoint_id:
         config["configurable"]["checkpoint_id"] = chat_request.checkpoint_id
     if chat_request.checkpoint_ns:
         config["configurable"]["checkpoint_ns"] = chat_request.checkpoint_ns
     if LANGFUSE_TRACING_ENABLED:
-        config.update(build_langfuse_config(thread_id=thread_id))
+        config.update(build_langfuse_config(thread_id=tid))
     input_data = {"messages": dict_messages}
     if chat_request.rubric:
         input_data["rubric"] = chat_request.rubric
@@ -46,11 +53,12 @@ async def invoke_chat(chat_request: ChatRequest, thread_id: str):
     return langchain_result_to_response(result)
 
 
-def stream_chat(chat_request: ChatRequest, thread_id: str):
+async def stream_chat(chat_request: ChatRequest, thread_id: str, cache: Cache, username: str):
     """流式聊天（返回 SSE 异步生成器）"""
-    logger.info("流式聊天开始 | thread_id=%s | messages=%d", thread_id, len(chat_request.messages))
+    logger.info("流式聊天开始 | thread_id=%s | messages=%d | username=%s", thread_id, len(chat_request.messages), username)
     dict_messages = dump_messages(chat_request.messages)
-    graph = get_graph()
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
     input_data = {"messages": dict_messages}
     if chat_request.rubric:
         input_data["rubric"] = chat_request.rubric
@@ -58,21 +66,22 @@ def stream_chat(chat_request: ChatRequest, thread_id: str):
     return _sse_stream(
         graph,
         input_data,
-        thread_id,
+        tid,
         checkpoint_id=chat_request.checkpoint_id,
         checkpoint_ns=chat_request.checkpoint_ns,
     )
 
 
-def resume_chat(resume_request: ResumeRequest, thread_id: str):
+async def resume_chat(resume_request: ResumeRequest, thread_id: str, cache: Cache, username: str):
     """恢复中断的对话 —— 流式返回结果"""
-    logger.info("恢复中断对话 | thread_id=%s | decisions=%d", thread_id, len(resume_request.decisions))
+    logger.info("恢复中断对话 | thread_id=%s | decisions=%d | username=%s", thread_id, len(resume_request.decisions), username)
     decisions = [
         d.model_dump(mode="json", exclude_none=True)
         for d in resume_request.decisions
     ]
-    graph = get_graph()
-    return _sse_stream(graph, Command(resume={"decisions": decisions}), thread_id)
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
+    return _sse_stream(graph, Command(resume={"decisions": decisions}), tid)
 
 
 # ═══════════════════════════════════════════
@@ -173,6 +182,8 @@ async def invoke_chat_with_files(
     files: list[tuple[str, bytes]],
     messages_json: str,
     thread_id: str,
+    cache: Cache,
+    username: str,
 ) -> dict:
     """非流式聊天（带文件附件）。
 
@@ -184,17 +195,18 @@ async def invoke_chat_with_files(
     Returns:
         ChatResponse（Pydantic model）
     """
-    logger.info("非流式聊天(带文件) | thread_id=%s | files=%d", thread_id, len(files))
+    logger.info("非流式聊天(带文件) | thread_id=%s | files=%d | username=%s", thread_id, len(files), username)
     content_blocks, saved_files, checkpoint_id, checkpoint_ns = await _extract_and_build_content(files, messages_json)
 
-    graph = get_graph()
-    config = {"configurable": {"thread_id": thread_id}}
+    graph = await get_or_create_graph(cache, username)
+    tid = _tid(username, thread_id)
+    config = {"configurable": {"thread_id": tid}}
     if checkpoint_id:
         config["configurable"]["checkpoint_id"] = checkpoint_id
     if checkpoint_ns:
         config["configurable"]["checkpoint_ns"] = checkpoint_ns
     if LANGFUSE_TRACING_ENABLED:
-        config.update(build_langfuse_config(thread_id=thread_id))
+        config.update(build_langfuse_config(thread_id=tid))
 
     result = await graph.ainvoke(
         {"messages": [{"role": "user", "content": content_blocks}]},
@@ -208,23 +220,20 @@ async def invoke_chat_with_files(
     return langchain_result_to_response(result)
 
 
-def stream_chat_with_files(
+async def stream_chat_with_files(
     files: list[tuple[str, bytes]],
     messages_json: str,
     thread_id: str,
+    cache: Cache,
+    username: str,
 ):
-    """流式聊天（带文件附件，返回 SSE 异步生成器）。
-
-    Args:
-        files: [(file_name, file_bytes), ...]
-        messages_json: JSON 字符串，形如 {"messages": [...]}
-        thread_id: 对话线程 ID
-    """
-    logger.info("流式聊天(带文件)开始 | thread_id=%s | files=%d", thread_id, len(files))
+    """流式聊天（带文件附件，返回 SSE 异步生成器）。"""
+    logger.info("流式聊天(带文件)开始 | thread_id=%s | files=%d | username=%s", thread_id, len(files), username)
 
     async def _generator():
         content_blocks, saved_files, checkpoint_id, checkpoint_ns = await _extract_and_build_content(files, messages_json)
-        graph = get_graph()
+        graph = await get_or_create_graph(cache, username)
+        tid = _tid(username, thread_id)
 
         # 异步保存附件文本
         asyncio.create_task(_save_attachment_texts(saved_files))
@@ -232,7 +241,7 @@ def stream_chat_with_files(
         async for chunk in _sse_stream(
             graph,
             {"messages": [{"role": "user", "content": content_blocks}]},
-            thread_id,
+            tid,
             checkpoint_id=checkpoint_id,
             checkpoint_ns=checkpoint_ns,
         ):

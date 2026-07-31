@@ -4,6 +4,10 @@ import 'katex/dist/katex.min.css'
 import App from './App.vue'
 import router from './router'
 import { loggerVue } from '@/shared/useLogger'
+import { setupAuthInterceptors } from '@/api/interceptors'
+
+// ── 初始化 API 认证拦截器 ──
+setupAuthInterceptors()
 
 const app = createApp(App)
 

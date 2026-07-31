@@ -3,36 +3,52 @@ from __future__ import annotations
 import yaml
 from pathlib import Path
 from deepagents.backends.protocol import LsResult
-from backend.config.env_settings import SKILLS_CONFIG_PATH
 from backend.config.logger import get_logger
 
 logger = get_logger(__name__)
 
+# 与 settings_service.py 中的键前缀保持一致
+_CACHE_KEY_PREFIX = "cfg:"
+SKILLS_CACHE_KEY = _CACHE_KEY_PREFIX + "skills"
+INIT_KEY = "cfg:initialized"
+
 
 class SkillFilteredBackend:
-    """包装 FilesystemBackend，按 skills_config.yaml 过滤 ls 结果。
+    """包装 FilesystemBackend，按用户 cache 中的 skills 配置过滤 ls 结果。
 
     仅代理 ls / als 两个方法进行过滤，其他调用透传给内部后端。
+
+    Args:
+        backend: 被包装的内部后端实例。
+        cache: 当前用户的 diskcache 实例（含 cfg:skills 启用配置）。
     """
 
-    def __init__(self, backend):
+    def __init__(self, backend, cache=None):
         self._backend = backend
-        self._config_path = Path(SKILLS_CONFIG_PATH) if SKILLS_CONFIG_PATH else None
-        logger.info("SkillFilteredBackend 已初始化 | inner=%s | config=%s",
-                     type(self._backend).__name__, self._config_path)
+        self._cache = cache
+        logger.info("SkillFilteredBackend 已初始化 | inner=%s | user_cache=%s",
+                     type(self._backend).__name__, cache is not None)
 
     def _read_enabled(self) -> set[str]:
-        """读取当前启用的技能名称集合。"""
-        if self._config_path is None or not self._config_path.exists():
-            logger.info("技能配置文件不存在或无 SKILLS_CONFIG_PATH: %s", self._config_path)
-            return set()
-        try:
-            config = yaml.safe_load(self._config_path.read_text(encoding="utf-8"))
-            result = set(config.get("enabled", []))
-            logger.info("已读取技能配置 | enabled=%s | path=%s", result, self._config_path)
-            return result
-        except (yaml.YAMLError, KeyError):
-            return set()
+        """从用户 cache 读取当前启用的技能名称集合。
+
+        若无 cache（向后兼容），回退到全局共享配置文件。
+        """
+        # 优先从用户 cache 读取
+        if self._cache is not None:
+            try:
+                raw = self._cache.get(SKILLS_CACHE_KEY)
+                if raw is not None:
+                    config = yaml.safe_load(raw) or {}
+                    result = set(config.get("enabled", []))
+                    logger.debug("从用户 cache 读取技能配置 | enabled=%s", result)
+                    return result
+            except Exception:
+                logger.warning("从用户 cache 读取技能配置失败", exc_info=True)
+
+        # 回退：无 cache 或读取失败时返回空集（不过滤）
+        logger.debug("无用户 cache 或配置为空，不过滤技能")
+        return set()
 
     def _filter_entries(self, entries: list | None) -> list | None:
         """过滤掉不在启用列表中的技能目录。"""

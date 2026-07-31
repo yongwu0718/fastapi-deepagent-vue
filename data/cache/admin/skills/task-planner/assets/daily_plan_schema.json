@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DailyPlan",
+  "description": "每日计划结构定义，按时间块组织任务",
+  "type": "object",
+  "required": ["date", "day_of_week", "theme", "core_goals", "time_blocks", "backlog", "total_planned_minutes", "buffer_minutes", "notes"],
+  "properties": {
+    "date": { "type": "string", "format": "date", "description": "日期，格式 YYYY-MM-DD" },
+    "day_of_week": { "type": "string", "description": "星期几，如 周一" },
+    "theme": { "type": "string", "description": "当日主题，如 深度工作日、沟通日、弹性日" },
+    "core_goals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CoreGoal" }
+    },
+    "time_blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TimeBlock" }
+    },
+    "backlog": {
+      "type": "array",
+      "description": "备用任务池，status 固定为 backlog",
+      "items": { "$ref": "#/$defs/Task" }
+    },
+    "total_planned_minutes": { "type": "integer", "description": "当日计划总时长（分钟）" },
+    "buffer_minutes": { "type": "integer", "description": "缓冲时间（分钟），建议 >= 总时长的 20%" },
+    "notes": { "type": "string", "description": "备注与提醒" }
+  },
+  "$defs": {
+    "CoreGoal": {
+      "type": "object",
+      "required": ["goal", "outcome"],
+      "properties": {
+        "goal": { "type": "string", "description": "核心目标描述" },
+        "outcome": { "type": "string", "description": "成功的可验证成果" },
+        "linked_long_term_goal": { "type": "string", "description": "关联的长期目标名称（可选）" }
+      }
+    },
+    "Task": {
+      "type": "object",
+      "required": ["id", "title", "duration_minutes", "energy", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "start_time": { "type": "string", "description": "开始时间 HH:MM（backlog 中不需要）" },
+        "end_time": { "type": "string", "description": "结束时间 HH:MM（backlog 中不需要）" },
+        "duration_minutes": { "type": "integer" },
+        "energy": {
+          "type": "string",
+          "enum": ["deep", "collaboration", "shallow", "learning"],
+          "description": "精力类型：deep=深度专注, collaboration=沟通协作, shallow=机械执行, learning=学习充电"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in-progress", "done", "backlog"]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "前置任务 id 列表"
+        }
+      }
+    },
+    "TimeBlock": {
+      "type": "object",
+      "required": ["block_name", "energy_type", "time_range", "tasks"],
+      "properties": {
+        "block_name": { "type": "string", "description": "块名称，如 上午深度块" },
+        "energy_type": {
+          "type": "string",
+          "enum": ["deep", "collaboration", "shallow", "learning"]
+        },
+        "time_range": { "type": "string", "description": "时间段，如 08:30-12:00" },
+        "tasks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Task" }
+        }
+      }
+    }
+  }
+}

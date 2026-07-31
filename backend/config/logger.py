@@ -1,23 +1,28 @@
-"""统一日志配置模块 —— 提供结构化日志记录。
+"""统一日志配置模块 —— 提供多租户日志隔离。
 
-输出到文件（均落在 ``logs/<日期>/`` 子目录中）：
+输出结构（按日期 + 用户隔离）：
 
-1. **当日累计文件**：文件名 ``app.log``，按大小自动滚动；同一日期下多次启动
-   会追加到同一文件，便于按天查看完整日志。
-2. **本次启动文件**：每次进程启动生成一个独立文件
-   ``run_<时间>_<pid>.log``（例如 ``run_14-30-22_pid6780.log``），
-   仅记录本次启动期间的全部日志，便于按次溯源。进程退出后文件保留，
-   并受 ``run_log_ttl_days`` TTL 控制——超过 TTL 的 run 文件在下次启动
-   时自动清理。``<= 0`` 表示不清理。
+    logs/<YYYY-MM-DD>/
+    ├── admin/
+    │   ├── app.log           # admin 当日日志（按大小滚动）
+    │   └── run_14-30-22_pid1234.log  # 本次启动日志
+    ├── user2/
+    │   ├── app.log
+    │   └── run_14-30-22_pid1234.log
+    └── _system/
+        └── app.log           # 无用户上下文的系统级日志
+
+每条日志记录根据 ``username`` 上下文自动路由到对应用户目录。
 """
 
 import logging
 import os
 import shutil
+import threading
 import time
 from contextvars import ContextVar
-from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -26,7 +31,7 @@ LOG_ROOT = Path(__file__).resolve().parent.parent / "logs"
 LOG_ROOT.mkdir(exist_ok=True)
 
 # ── 日志级别常量 ──
-TRACE = 5  # 比 DEBUG 更细粒度
+TRACE = 5
 logging.addLevelName(TRACE, "TRACE")
 
 
@@ -43,11 +48,7 @@ _DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class ContextFormatter(logging.Formatter):
-    """在日志末尾追加请求级上下文字段。
-
-    如果当前请求通过 ``bind_context()`` 绑定了上下文，
-    则在每条日志行末追加 ``| ctx: key1=val1 key2=val2``。
-    """
+    """在日志末尾追加请求级上下文字段。"""
 
     def format(self, record: logging.LogRecord) -> str:
         base = super().format(record)
@@ -58,12 +59,9 @@ class ContextFormatter(logging.Formatter):
         return base
 
 
-_FILE_FORMAT = ContextFormatter(
-    fmt=_BASE_FMT,
-    datefmt=_DATE_FMT,
-)
+_FILE_FORMAT = ContextFormatter(fmt=_BASE_FMT, datefmt=_DATE_FMT)
 
-# ── 已初始化标记（幂等） ──
+# ── 已初始化标记 ──
 _initialized = False
 
 # ── 请求级上下文（ContextVar，协程安全） ──
@@ -73,18 +71,7 @@ _request_context: ContextVar[Optional[Dict[str, Any]]] = ContextVar(
 
 
 def bind_context(**kwargs: Any) -> None:
-    """绑定键值对到当前请求的日志上下文。
-
-    调用后，当前协程内所有日志记录都会自动携带这些字段。
-    通常在请求进入时由中间件调用。
-
-    用法::
-
-        from backend.config.logger import bind_context, clear_context
-        bind_context(thread_id="abc123", user_id="42")
-        logger.info("processing")  # 自动带上 thread_id, user_id
-        clear_context()
-    """
+    """绑定键值对到当前请求的日志上下文。"""
     current = _request_context.get() or {}
     _request_context.set({**current, **kwargs})
 
@@ -95,19 +82,15 @@ def clear_context() -> None:
 
 
 def get_context() -> Dict[str, Any]:
-    """获取当前请求的日志上下文。
-
-    Returns:
-        当前上下文字典，无上下文时返回空字典。
-    """
+    """获取当前请求的日志上下文。"""
     return _request_context.get() or {}
 
 
 class ContextFilter(logging.Filter):
     """将请求级上下文注入每一条日志记录。
 
-    作为 filter 添加到 handler 上，每条日志记录都会自动附加
-    ``bind_context()`` 绑定的字段。
+    将 bind_context() 绑定的字段作为 record 属性挂载上去，
+    供 RoutingFileHandler 路由 + ContextFormatter 格式化使用。
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -118,7 +101,7 @@ class ContextFilter(logging.Filter):
 
 
 class HeartbeatFilter(logging.Filter):
-    """过滤 MCP 心跳/Ping 请求日志，减少日志噪音。"""
+    """过滤 MCP 心跳/Ping 请求日志。"""
 
     _SKIP_KEYWORDS = ("PingRequest",)
 
@@ -127,77 +110,128 @@ class HeartbeatFilter(logging.Filter):
         return not any(kw in msg for kw in self._SKIP_KEYWORDS)
 
 
-# ── 当前会话日志目录 & 启动文件路径（供外部查询/调试） ──
+# ── 当前会话日志目录 & 启动文件路径 ──
 CURRENT_DATE_DIR: Optional[Path] = None
 CURRENT_RUN_LOG_FILE: Optional[Path] = None
 
 
+# ═══════════════════════════════════════════════════════
+#  多租户路由 handler
+# ═══════════════════════════════════════════════════════
+
+class RoutingFileHandler(logging.Handler):
+    """基于 record.username 动态路由日志到不同用户的文件。
+
+    每个用户（及 _system）拥有独立的 RotatingFileHandler，
+    在首次写日志时按需创建。
+    """
+
+    def __init__(self, date_dir: Path, max_bytes: int, backup_count: int):
+        super().__init__()
+        self._date_dir = Path(date_dir)
+        self._max_bytes = max_bytes
+        self._backup_count = backup_count
+        self._handlers: dict[str, RotatingFileHandler] = {}
+        self._lock = threading.Lock()
+
+    def _get_or_create_handler(self, username: str) -> RotatingFileHandler:
+        """按需创建或返回指定用户的 RotatingFileHandler。"""
+        if username not in self._handlers:
+            user_dir = self._date_dir / username
+            user_dir.mkdir(parents=True, exist_ok=True)
+            h = RotatingFileHandler(
+                filename=str(user_dir / "app.log"),
+                maxBytes=self._max_bytes,
+                backupCount=self._backup_count,
+                encoding="utf-8",
+            )
+            # 继承 level / formatter / filters / namer
+            h.setLevel(self.level)
+            if self.formatter:
+                h.setFormatter(self.formatter)
+            for f in self.filters:  # type: ignore[attr-defined]
+                h.addFilter(f)
+            h.namer = _daily_namer
+            self._handlers[username] = h
+        return self._handlers[username]
+
+    def emit(self, record: logging.LogRecord) -> None:
+        username = getattr(record, "username", None)
+        key = username if username else "_system"
+        try:
+            h = self._get_or_create_handler(key)
+            h.emit(record)
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        with self._lock:
+            for h in list(self._handlers.values()):
+                try:
+                    h.close()
+                except Exception:
+                    pass
+            self._handlers.clear()
+        super().close()
+
+
+# ═══════════════════════════════════════════════════════
+#  日志初始化
+# ═══════════════════════════════════════════════════════
+
 def setup_logging(
-    max_bytes: int = 10 * 1024 * 1024,  # 10MB
+    max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
     run_log_ttl_days: int = 1,
     app_log_ttl_days: int = 7,
 ):
-    """初始化全局日志配置。
+    """初始化多租户日志系统。
 
-    日志文件按日期隔离到 ``logs/<YYYY-MM-DD>/`` 子目录中；每次进程启动
-    额外生成一个 ``run_HH-MM-SS_pid<pid>.log`` 独立文件。
+    日志文件按日期 + 用户隔离到 ``logs/<YYYY-MM-DD>/<username>/`` 中；
+    每次进程启动额外生成一个 ``run_HH-MM-SS_pid<pid>.log`` 启动日志。
 
     清理策略（启动时执行）：
-        - ``run_log_ttl_days``：本次启动开始时，清理**所有**日期目录里
-          mtime 超过该 TTL 的 ``run_*.log``，便于一天内多次启动时
-          自动淘汰旧 run 文件。默认 1 天，``<= 0`` 表示不清理。
-        - ``app_log_ttl_days``：保留最近 N 天的日期目录。**早于今天的
-          第 N 天之外**的整个日期目录（含 ``app.log``、滚动备份及
-          仍存的 ``run_*.log``）会被整目录删除。默认 7 天，
-          ``<= 0`` 表示不清理。
-
-    参数:
-        max_bytes: 当日累计文件单个文件最大字节数。
-        backup_count: 当日累计文件保留的历史文件数。
-        run_log_ttl_days: run 启动日志的 TTL（天）。
-        app_log_ttl_days: app.log 日期目录的保留天数。
+        - ``run_log_ttl_days``：清理所有日期目录里 mtime 超期的 run_*.log。
+        - ``app_log_ttl_days``：超出保留天数的整个日期目录（含所有用户子目录）
+          会被整目录删除。``<= 0`` 表示跳过。
     """
     global _initialized, CURRENT_DATE_DIR, CURRENT_RUN_LOG_FILE
     if _initialized:
         return
 
-    # ── 启动时执行两类清理 ──
+    # ── 启动时清理 ──
     _cleanup_expired_run_logs(run_log_ttl_days)
     _cleanup_expired_date_dirs(app_log_ttl_days)
 
-    # ── 按日期创建子目录 ──
+    # ── 按日期创建根目录 ──
     date_str = datetime.now().strftime("%Y-%m-%d")
     date_dir = LOG_ROOT / date_str
     date_dir.mkdir(parents=True, exist_ok=True)
     CURRENT_DATE_DIR = date_dir
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(TRACE)  # root 设最细粒度，由各 handler 控制过滤
+    root_logger.setLevel(TRACE)
 
-    # ── 当日累计文件 handler（app.log） ──
-    daily_path = date_dir / "app.log"
-    daily_handler = RotatingFileHandler(
-        filename=str(daily_path),
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8",
-    )
+    # ── 多租户路由 handler（按用户隔离 app.log） ──
     heartbeat_filter = HeartbeatFilter()
-    daily_handler.setLevel(TRACE)  # 文件记录所有级别
-    daily_handler.setFormatter(_FILE_FORMAT)
-    daily_handler.addFilter(heartbeat_filter)
-    daily_handler.addFilter(ContextFilter())
-    daily_handler.namer = _daily_namer  # 滚动后改名追加日期后缀
-    root_logger.addHandler(daily_handler)
+    routing_handler = RoutingFileHandler(
+        date_dir=date_dir,
+        max_bytes=max_bytes,
+        backup_count=backup_count,
+    )
+    routing_handler.setLevel(TRACE)
+    routing_handler.setFormatter(_FILE_FORMAT)
+    routing_handler.addFilter(heartbeat_filter)
+    routing_handler.addFilter(ContextFilter())
+    root_logger.addHandler(routing_handler)
 
-    # ── 本次启动文件 handler（run_HH-MM-SS_pid<pid>.log） ──
+    # ── 本次启动文件 handler（存放在日期根目录下） ──
     run_stamp = datetime.now().strftime("%H-%M-%S")
     run_filename = f"run_{run_stamp}_pid{os.getpid()}.log"
     run_path = date_dir / run_filename
     run_handler = logging.FileHandler(
         filename=str(run_path),
-        mode="w",  # 每次启动覆盖（文件本身已是唯一标识）
+        mode="w",
         encoding="utf-8",
     )
     run_handler.setLevel(TRACE)
@@ -207,7 +241,7 @@ def setup_logging(
     root_logger.addHandler(run_handler)
     CURRENT_RUN_LOG_FILE = run_path
 
-    # ── 抑制第三方库的噪音日志 ──
+    # ── 抑制第三方库噪音 ──
     for lib in ("httpx", "httpcore", "urllib3", "asyncio", "aiosqlite", "watchfiles"):
         logging.getLogger(lib).setLevel(logging.WARNING)
 
@@ -219,63 +253,45 @@ def setup_logging(
     )
 
 
+# ═══════════════════════════════════════════════════════
+#  清理函数
+# ═══════════════════════════════════════════════════════
+
 def _cleanup_expired_run_logs(ttl_days: int) -> None:
-    """清理超过 TTL 的 run 启动日志（一次启动可以产生多个 run 文件）。
-
-    扫描范围：
-        - ``LOG_ROOT`` 根目录下的 ``run_*.log``（兼容历史平铺布局，使用 mtime 兜底）。
-        - 各日期子目录 ``LOG_ROOT/<YYYY-MM-DD>/`` 下的 ``run_*.log``。
-
-    判定依据：
-        - 日期子目录下的 run 文件：按目录日期名判定。保留最近 ``ttl_days`` 天
-          （含今天），更早日期的目录下所有 run 文件整批删除。解决了 mtime 方式
-          在跨天重启时间差（如早上重启时昨天下午的文件还未满 24 小时）下的漏删
-          问题。
-        - 根目录平铺的 run 文件：使用 mtime 兜底。
-
-    ``ttl_days <= 0`` 时跳过整个清理流程。
-    """
     if ttl_days <= 0:
         return
-
     tmp_logger = logging.getLogger("core.logger._cleanup")
     today = datetime.now().date()
-    # 保留 [today - ttl_days + 1, today] 共 ttl_days 天
     cutoff_date = today - timedelta(days=ttl_days - 1)
     removed = 0
     scanned = 0
 
-    def _bulk_remove(paths: list) -> None:
-        nonlocal removed
-        for p in paths:
-            try:
-                if p.is_file():
-                    p.unlink()
-                    removed += 1
-            except OSError as exc:
-                tmp_logger.warning("清理 run 日志失败 | path=%s | err=%s", p, exc)
-
     if not LOG_ROOT.exists():
         return
 
-    # ── 1) 各日期子目录下的 run_*.log（按目录日期名判定） ──
     for entry in LOG_ROOT.iterdir():
         if not entry.is_dir():
             continue
         try:
             dir_date = datetime.strptime(entry.name, "%Y-%m-%d").date()
         except ValueError:
-            # 非日期命名目录，跳过
             continue
-        run_files = list(entry.glob("run_*.log"))
+        # 递归扫描日期目录下所有子目录中的 run_*.log
+        run_files = list(entry.rglob("run_*.log"))
         scanned += len(run_files)
         if dir_date < cutoff_date:
-            _bulk_remove(run_files)
+            for p in run_files:
+                try:
+                    p.unlink()
+                    removed += 1
+                except OSError:
+                    pass
             if run_files:
-                tmp_logger.debug("已清理过期 run 日志 | 目录=%s | 共%d个",
-                                 entry.name, len(run_files))
+                tmp_logger.debug(
+                    "已清理过期 run 日志 | 目录=%s | 共%d个", entry.name, len(run_files)
+                )
 
-    # ── 2) 根目录下的历史 run_*.log（平铺布局，mtime 兜底） ──
+    # 根目录兼容
     cutoff_mtime = time.time() - ttl_days * 86400
     for p in LOG_ROOT.glob("run_*.log"):
         scanned += 1
@@ -283,34 +299,21 @@ def _cleanup_expired_run_logs(ttl_days: int) -> None:
             if p.is_file() and p.stat().st_mtime < cutoff_mtime:
                 p.unlink()
                 removed += 1
-                tmp_logger.debug("已清理过期 run 日志 | %s", p)
-        except OSError as exc:
-            tmp_logger.warning("清理 run 日志失败 | path=%s | err=%s", p, exc)
+        except OSError:
+            pass
 
     if removed:
-        tmp_logger.info("run 日志 TTL 清理完成 | ttl=%d 天 | 删除 %d / 扫描 %d 个",
-                        ttl_days, removed, scanned)
+        tmp_logger.info(
+            "run 日志 TTL 清理完成 | ttl=%d 天 | 删除 %d / 扫描 %d 个",
+            ttl_days, removed, scanned,
+        )
 
 
 def _cleanup_expired_date_dirs(ttl_days: int) -> None:
-    """清理超过 TTL 的整个日期目录（含 app.log 及残留 run 文件）。
-
-    规则：
-        - 只处理形如 ``YYYY-MM-DD`` 的日期目录。
-        - 保留"今天"的目录不动。
-        - 比今天早 N 天（``ttl_days``）以上的日期目录整目录删除：
-          ``保留 = 今天, 今天-1, ., 今天-(ttl_days-1)`` 共 N 天。
-        - ``ttl_days <= 0`` 时跳过。
-
-    注意：run 文件的寿命由 ``run_log_ttl_days`` 单独控制；本函数只在
-    app.log 日期目录 TTL 触发时才会连同目录里的 run 文件一起删除。
-    """
     if ttl_days <= 0:
         return
-
     tmp_logger = logging.getLogger("core.logger._cleanup")
     today = datetime.now().date()
-    # 保留 [today - ttl_days + 1, today] 共 ttl_days 天；早于该区间的目录整目录删除。
     expire_threshold = today - timedelta(days=ttl_days)
     removed_dirs = 0
     scanned_dirs = 0
@@ -325,42 +328,30 @@ def _cleanup_expired_date_dirs(ttl_days: int) -> None:
         try:
             dir_date = datetime.strptime(entry.name, "%Y-%m-%d").date()
         except ValueError:
-            # 非日期命名目录（如其他用途的子目录）一律不动
             continue
         if dir_date >= today:
-            # 今天及未来日期的目录不删
             continue
         if dir_date < expire_threshold:
             try:
                 shutil.rmtree(entry)
                 removed_dirs += 1
-                tmp_logger.debug("已清理过期日期目录 | %s", entry)
-            except OSError as exc:
-                tmp_logger.warning("清理日期目录失败 | path=%s | err=%s", entry, exc)
+            except OSError:
+                pass
 
     if removed_dirs:
-        tmp_logger.info("app 日志目录 TTL 清理完成 | ttl=%d 天 | 删除 %d / 扫描 %d 个目录",
-                        ttl_days, removed_dirs, scanned_dirs)
+        tmp_logger.info(
+            "app 日志目录 TTL 清理完成 | ttl=%d 天 | 删除 %d / 扫描 %d 个目录",
+            ttl_days, removed_dirs, scanned_dirs,
+        )
 
 
 def _daily_namer(default_name: str) -> str:
-    """RotatingFileHandler 滚动时使用本函数为备份文件命名。
-
-    默认实现会把 ``app.log`` 滚动为 ``app.log.1``、``app.log.2``。
-    这里改为追加日期后缀，便于按天辨识。
-    """
+    """RotatingFileHandler 滚动时的备份文件命名。"""
     base, ext = os.path.splitext(default_name)
-    # default_name 此时形如 "./2026-06-16/app.log"
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"{base}.{timestamp}{ext or '.log'}"
 
 
 def get_logger(name: str) -> logging.Logger:
-    """获取指定名称的 logger（自动从 __name__ 派生模块名）。
-
-    用法:
-        from backend.core.logger import get_logger
-        logger = get_logger(__name__)
-        logger.info("xxx happened")
-    """
+    """获取指定名称的 logger。"""
     return logging.getLogger(name)

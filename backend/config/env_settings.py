@@ -57,6 +57,9 @@ SUMMARIZATION_DIR = _resolve(os.getenv("SUMMARIZATION_DIR"))
 SAVE_STATE_DIR = _resolve(os.getenv("SAVE_STATE_DIR"))
 CHAT_LOG_DIR = _resolve(os.getenv("CHAT_LOG_DIR"))
 
+# 用户缓存目录（多租户隔离）
+CACHE_DIR = _resolve(os.getenv("CACHE_DIR", "data/cache"))
+
 # ========== CORS ==========
 CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 
