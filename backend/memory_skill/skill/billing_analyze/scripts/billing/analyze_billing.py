@@ -4,14 +4,14 @@ import json
 from collections import defaultdict
 
 try:
-    from .common import DB_PATH
+    from .common import DB_PATH, build_date_filter
 except ImportError:
-    from common import DB_PATH  # type: ignore
+    from common import DB_PATH, build_date_filter  # type: ignore
 
 
 def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | None = None) -> dict:
-    """核心分析逻辑，返回 json_output，从 records_view 读取
-    
+    """核心分析逻辑，返回 json_output，从 billing_records + income_records 读取
+
     Args:
         db_path: 数据库路径
         start_date: 可选，起始日期（含），格式 "YYYY-MM-DD"
@@ -22,29 +22,42 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # records_view 列: id, 名称, 大类, 细类, 金额, 平台, 日期, 收支类型, 分类, 年月
-    # 金额: 支出为负, 收入为正
-    if start_date and end_date:
-        cursor.execute(
-            "SELECT * FROM records_view WHERE 日期 >= ? AND 日期 <= ? ORDER BY 日期",
-            (start_date, end_date)
-        )
-    elif start_date:
-        cursor.execute(
-            "SELECT * FROM records_view WHERE 日期 >= ? ORDER BY 日期",
-            (start_date,)
-        )
-    elif end_date:
-        cursor.execute(
-            "SELECT * FROM records_view WHERE 日期 <= ? ORDER BY 日期",
-            (end_date,)
-        )
-    else:
-        cursor.execute("SELECT * FROM records_view ORDER BY 日期")
+    # 支出来自 billing_records（金额为负，收支类型=支出，分类=消费类型）
+    _exp_where, _exp_params = build_date_filter("类型 = '支出'", start_date, end_date)
+    cursor.execute(f"SELECT * FROM billing_records WHERE {_exp_where} ORDER BY 日期", _exp_params)
+    rows = [
+        {
+            "日期": r["日期"],
+            "名称": r["消费名称"],
+            "大类": r["消费大类"],
+            "细类": r["消费细类"] or "未分类",
+            "金额": -abs(r["金额"]),
+            "平台": r["支付平台"],
+            "收支类型": "支出",
+            "分类": r["消费类型"] or "未分类",
+            "年月": r["日期"][:7],
+        }
+        for r in cursor.fetchall()
+    ]
 
-    rows = cursor.fetchall()
-    total = len(rows)
+    # 收入来自 income_records（金额为正，收支类型=收入，无"消费类型"列分类置空）
+    _inc_where, _inc_params = build_date_filter("类型 = '收入'", start_date, end_date)
+    cursor.execute(f"SELECT * FROM income_records WHERE {_inc_where} ORDER BY 日期", _inc_params)
+    for r in cursor.fetchall():
+        rows.append({
+            "日期": r["日期"],
+            "名称": r["消费名称"],
+            "大类": r["消费大类"],
+            "细类": r["消费细类"] or "未分类",
+            "金额": abs(r["金额"]),
+            "平台": r["支付平台"],
+            "收支类型": "收入",
+            "分类": "",
+            "年月": r["日期"][:7],
+        })
+
     conn.close()
+    total = len(rows)
 
     # ─── 预处理 ────────────────────────────────────────────
     income_total = 0.0
@@ -215,8 +228,8 @@ def analyze_billing(start_date: str | None = None, end_date: str | None = None) 
     """账单综合分析 - 收支总览、支出分类排名（含细类）、收入分类（含细类）、
     支出细类排名、平台使用分布、金额分布、高频消费。
 
-    金额约定：支出 < 0，收入 > 0（records_view 中已统一）。
-    数据来源：records_view（billing_records UNION ALL income_records）。
+    金额约定：支出 < 0，收入 > 0（构建 rows 时统一）。
+    数据来源：支出=billing_records，收入=income_records。
 
     Args:
         start_date: 可选，起始日期（含），格式 "YYYY-MM-DD"

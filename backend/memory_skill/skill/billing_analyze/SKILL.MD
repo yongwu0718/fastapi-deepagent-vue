@@ -18,6 +18,7 @@ cd scripts/billing
 python cli.py analyze billing
 python cli.py analyze expense
 python cli.py analyze monthly
+python cli.py analyze category
 
 # 可按日期范围筛选
 python cli.py analyze expense --start 2026-01-01 --end 2026-06-30
@@ -27,7 +28,7 @@ python cli.py list-categories                          # 查看分类约束
 python cli.py save-bill --item-name "胜香斋" --category "餐饮" --amount 25 --date 2026-07-24 --platform "微信" --subcategory "午餐" --expense-type "刚性必要"
 ```
 
-分析模式→工具对应：`analyze billing` = 综合总览（收支+收入+平台），`analyze expense` = 支出专项（细类排名含 expense_type + 项目明细 + 消费频次 + 高频消费），`analyze monthly` = 三层逐月（总额+负担率+环比+异常标记+细类拆解）。
+分析模式→工具对应：`analyze billing` = 综合总览（收支总览+收入分类+平台使用分布），`analyze expense` = 支出专项（细类排名+商户明细+消费频次+高频消费），`analyze monthly` = 三层逐月（月度收支+刚性固定监控+刚性必要效率+弹性行为）。
 
 ## 命令执行铁律
 
@@ -106,28 +107,19 @@ python cli.py save-bill \
 
 ### 批量导入
 
-若用户提供了账单文件（JSON/CSV/Excel），大数据量写pthon脚本进行解析,先解析并展示前几条记录供用户审核，确认字段映射正确后再编写导入脚本写入 SQLite。禁止不经确认直接批量入库。
+若用户提供了账单文件（微信/支付宝导出或 CSV/Excel），先解析并展示前几条记录供用户审核，确认字段映射正确后再执行导入。禁止不经确认直接批量入库。
+
+**✅ 必须使用官方清洗/导入脚本**（禁止手写替换脚本、禁止绕过 CLI 直接写 SQLite）：
+
+- **原始账单清洗**：`clean_wechat_bill.py`（微信 XLSX）或 `clean_alipay_bill.py`（支付宝 GBK CSV）→ 输出标准 9 列 CSV/Excel
+- **批量导入**：`python import_csv.py [path.csv]`（默认 `微信账单_清洗后.csv`），按行 `类型` 路由到 `billing_records` / `income_records`，失败自动回滚
+- **初始化数据库**：若 `scripts/data/billing.db` 不存在，先运行 `python init_db.py` 创建表与 `records_view`
 
 **备用审核路径**：如果用户觉得逐条对比效率低，可由用户自行启动 `streamlit run billing_view.py` Web 编辑界面，在可视化界面中逐条校对和修正。**禁止代理主动执行 streamlit。**
 
 **数据库路径**：`scripts/data/billing.db`（相对 `scripts/billing/` 为 `../data/billing.db`）
 
-**目标表**：`billing_records`（中文列名）
-
-**INSERT 模板**：
-
-```python
-import sqlite3
-conn = sqlite3.connect("../data/billing.db")
-conn.execute("""
-    INSERT INTO billing_records ("消费名称", "消费大类", "消费细类", "类型", "金额", "支付平台", "日期", "消费类型")
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-""", (item_name, category, subcategory, direction, amount, platform, date, expense_type))
-conn.commit()
-conn.close()
-```
-
-**字段约束**：
+**字段约束**（`billing_records`，中文列名）：
 
 | 字段 | 约束 |
 |------|------|
@@ -135,12 +127,13 @@ conn.close()
 | `消费大类` | **必须从 common.py 的 CATEGORY_OPTIONS 中取值** |
 | `消费细类` | **必须属于对应大类的 SUBCATEGORY_OPTIONS** |
 | `类型` | `'支出'` / `'收入'` |
-| `金额` | REAL，≥ 0 |
+| `金额` | REAL，≥ 0（绝对值，方向由 `类型` 决定） |
 | `支付平台` | **必须从 common.py 的 PLATFORM_OPTIONS 中取值** |
 | `日期` | `YYYY-MM-DD` |
 | `消费类型` | **必须从 common.py 的 EXPENSE_TYPE_OPTIONS 中取值** 或 NULL |
+| `备注` | 可选自由文本 |
 
-> `id` 和 `年月` 列自动派生，禁止写入。
+> `id` 列自动自增，禁止写入。`年月` 不存储于物理表，仅由 `records_view` 视图通过 `substr("日期",1,7)` 派生，禁止传入。
 
 ### 验证数据
 
@@ -172,7 +165,7 @@ conn.close()
 | B 时序趋势 | "哪个月花最多/怎么超了" | `analyze monthly` + `analyze expense` |
 | C 预算预测 | "下月预算/如何省钱" | `analyze monthly` + `analyze billing` + `analyze expense` |
 
-**禁止只调一个工具就下结论**。每个工具的返回结构详见 `references/tools_reference.md`。
+**禁止只调一个工具就下结论**。每个工具的返回结构详见 `openwiki/billing-cli/analysis-modes.md`（各 analyze 命令的权威 JSON 契约）。
 
 ---
 
@@ -303,8 +296,10 @@ billing_records
 ├── 金额          REAL     金额绝对值（必填，≥0）
 ├── 支付平台       TEXT     平台（见 common.py PLATFORM_OPTIONS）
 ├── 日期          TEXT     YYYY-MM-DD（必填）
-├── 消费类型       TEXT     类型（见 common.py EXPENSE_TYPE_OPTIONS）
-└── 年月          TEXT     自动派生，YYYY-MM（GENERATED ALWAYS AS）
+├── 消费类型       TEXT     类型（见 common.py EXPENSE_TYPE_OPTIONS，可为空）
+└── 备注          TEXT     可选自由文本
+
+说明：`年月` 不是物理列，由 `records_view` 视图通过 `substr("日期",1,7)` 派生。
 ```
 
 ### records_view（VIEW — 统一查询视图）
@@ -320,9 +315,11 @@ records_view
 ├── 平台       TEXT     支付/入账平台
 ├── 日期       TEXT     YYYY-MM-DD
 ├── 收支类型    TEXT     '支出' / '收入'
-├── 分类       TEXT     消费类型或备注
-└── 年月       TEXT     自动派生
+├── 分类       TEXT     支出行为消费类型，收入行为空串
+└── 年月       TEXT     由 substr("日期",1,7) 派生
 ```
+
+> `income_records` 物理表没有 `消费类型` 列；`分类` 在视图中对收入行恒为空串。
 
 查询时按 `日期 DESC` 排序即可获得完整收支流水。
 
@@ -345,7 +342,7 @@ records_view
 |------|----------|
 | `scripts/billing/common.py` | 步骤 0：所有分类约束的唯一来源（消费大类、细类、类型、平台、收入来源） |
 | `references/analysis_workflows.md` | 步骤 1：需要详细了解三种分析模式时 |
-| `references/tools_reference.md` | 步骤 1：需要了解工具返回结构细节时 |
+| `openwiki/billing-cli/analysis-modes.md` | 步骤 1：需要了解工具返回结构细节时（权威 JSON 契约） |
 | `references/data_conventions.md` | 步骤 3：执行数据完整性校验时 |
 | `references/budget_prediction.md` | 步骤 4：执行预算预测的计算公式时 |
 | `assets/report_template.md` | 步骤 5：输出预算预测报告时 |

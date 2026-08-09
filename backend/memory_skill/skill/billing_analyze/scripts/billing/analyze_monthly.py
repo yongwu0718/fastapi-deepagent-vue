@@ -15,15 +15,37 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # 支出（金额负数，取反后存储）
-    _exp_where, _exp_params = build_date_filter("金额 < 0", start_date, end_date)
-    cursor.execute(f"SELECT * FROM records_view WHERE {_exp_where} ORDER BY 日期", _exp_params)
-    exp_records = [{**dict(r), "金额": -r["金额"]} for r in cursor.fetchall()]
+    # 支出（类型 = '支出'，表中金额为绝对值，转正存储）
+    _exp_where, _exp_params = build_date_filter("类型 = '支出'", start_date, end_date)
+    cursor.execute(f"SELECT * FROM billing_records WHERE {_exp_where} ORDER BY 日期", _exp_params)
+    exp_records = []
+    for r in cursor.fetchall():
+        exp_records.append({
+            "日期": r["日期"],
+            "年月": r["日期"][:7],
+            "名称": r["消费名称"],
+            "大类": r["消费大类"],
+            "细类": r["消费细类"] or "未分类",
+            "金额": abs(r["金额"]),
+            "平台": r["支付平台"],
+            "分类": r["消费类型"] or "未分类",
+        })
 
-    # 收入
-    _inc_where, _inc_params = build_date_filter("金额 > 0", start_date, end_date)
-    cursor.execute(f"SELECT * FROM records_view WHERE {_inc_where} ORDER BY 日期", _inc_params)
-    inc_records = [dict(r) for r in cursor.fetchall()]
+    # 收入（来源 income_records，无"消费类型"列，分类置空）
+    _inc_where, _inc_params = build_date_filter("类型 = '收入'", start_date, end_date)
+    cursor.execute(f"SELECT * FROM income_records WHERE {_inc_where} ORDER BY 日期", _inc_params)
+    inc_records = []
+    for r in cursor.fetchall():
+        inc_records.append({
+            "日期": r["日期"],
+            "年月": r["日期"][:7],
+            "名称": r["消费名称"],
+            "大类": r["消费大类"],
+            "细类": r["消费细类"] or "未分类",
+            "金额": abs(r["金额"]),
+            "平台": r["支付平台"],
+            "分类": "",
+        })
 
     conn.close()
 
@@ -226,7 +248,7 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
 
 def analyze_monthly(start_date: str | None = None, end_date: str | None = None) -> dict:
     """三层逐月分析 - 逐月收支、刚性固定监控、刚性必要效率追踪、弹性可选行为追踪。
-    金额约定：支出 < 0，收入 > 0。
+    数据来源 billing_records 表，金额约定：表中"金额"为绝对值，方向由"类型"区分。
 
     Args:
         start_date: 可选，起始日期（含），格式 "YYYY-MM-DD"，如 "2025-01-01"

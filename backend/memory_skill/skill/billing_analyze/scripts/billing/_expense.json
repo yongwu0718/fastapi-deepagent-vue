@@ -1,0 +1,509 @@
+{
+  "title": "支出专项分析",
+  "header": {
+    "date_start": "2026-07-18",
+    "date_end": "2026-08-12",
+    "record_count": 114,
+    "total_expense": 3002.36,
+    "income_total": 2655.6
+  },
+  "subcategory_ranking": [
+    {
+      "category": "交通",
+      "total_amount": 1748.43,
+      "total_percentage": "58.2%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "车辆维护",
+          "amount": 1505.53,
+          "count": 2,
+          "percentage": "86.1%",
+          "刚性固定": 0,
+          "刚性必要": 1505.53,
+          "弹性支出": 0
+        },
+        {
+          "rank": 2,
+          "subcategory": "电池",
+          "amount": 208.9,
+          "count": 1,
+          "percentage": "11.9%",
+          "刚性固定": 208.9,
+          "刚性必要": 0,
+          "弹性支出": 0
+        },
+        {
+          "rank": 3,
+          "subcategory": "大巴",
+          "amount": 30.0,
+          "count": 1,
+          "percentage": "1.7%",
+          "刚性固定": 0,
+          "刚性必要": 30.0,
+          "弹性支出": 0
+        },
+        {
+          "rank": 4,
+          "subcategory": "公交地铁",
+          "amount": 4.0,
+          "count": 1,
+          "percentage": "0.2%",
+          "刚性固定": 0,
+          "刚性必要": 4.0,
+          "弹性支出": 0
+        }
+      ]
+    },
+    {
+      "category": "餐饮",
+      "total_amount": 873.11,
+      "total_percentage": "29.1%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "堂食",
+          "amount": 471.44,
+          "count": 42,
+          "percentage": "54.0%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 471.44
+        },
+        {
+          "rank": 2,
+          "subcategory": "外卖",
+          "amount": 266.74,
+          "count": 15,
+          "percentage": "30.6%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 266.74
+        },
+        {
+          "rank": 3,
+          "subcategory": "饮料",
+          "amount": 66.76,
+          "count": 16,
+          "percentage": "7.6%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 66.76
+        },
+        {
+          "rank": 4,
+          "subcategory": "零食",
+          "amount": 54.85,
+          "count": 11,
+          "percentage": "6.3%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 54.85
+        },
+        {
+          "rank": 5,
+          "subcategory": "奶茶咖啡",
+          "amount": 13.32,
+          "count": 2,
+          "percentage": "1.5%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 13.32
+        }
+      ]
+    },
+    {
+      "category": "购物",
+      "total_amount": 227.94,
+      "total_percentage": "7.6%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "日用消耗",
+          "amount": 133.94,
+          "count": 10,
+          "percentage": "58.8%",
+          "刚性固定": 0,
+          "刚性必要": 63.82,
+          "弹性支出": 70.12
+        },
+        {
+          "rank": 2,
+          "subcategory": "服饰鞋包",
+          "amount": 94.0,
+          "count": 3,
+          "percentage": "41.2%",
+          "刚性固定": 0,
+          "刚性必要": 94.0,
+          "弹性支出": 0
+        }
+      ]
+    },
+    {
+      "category": "居家",
+      "total_amount": 42.28,
+      "total_percentage": "1.4%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "家电",
+          "amount": 24.8,
+          "count": 1,
+          "percentage": "58.7%",
+          "刚性固定": 0,
+          "刚性必要": 24.8,
+          "弹性支出": 0
+        },
+        {
+          "rank": 2,
+          "subcategory": "家具",
+          "amount": 17.48,
+          "count": 1,
+          "percentage": "41.3%",
+          "刚性固定": 0,
+          "刚性必要": 17.48,
+          "弹性支出": 0
+        }
+      ]
+    },
+    {
+      "category": "住房",
+      "total_amount": 40.0,
+      "total_percentage": "1.3%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "水电",
+          "amount": 40.0,
+          "count": 2,
+          "percentage": "100.0%",
+          "刚性固定": 0,
+          "刚性必要": 40.0,
+          "弹性支出": 0
+        }
+      ]
+    },
+    {
+      "category": "医疗",
+      "total_amount": 35.0,
+      "total_percentage": "1.2%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "药品",
+          "amount": 17.5,
+          "count": 1,
+          "percentage": "50.0%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 17.5
+        },
+        {
+          "rank": 2,
+          "subcategory": "保险",
+          "amount": 17.5,
+          "count": 1,
+          "percentage": "50.0%",
+          "刚性固定": 17.5,
+          "刚性必要": 0,
+          "弹性支出": 0
+        }
+      ]
+    },
+    {
+      "category": "通讯",
+      "total_amount": 33.8,
+      "total_percentage": "1.1%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "AI服务",
+          "amount": 25.0,
+          "count": 2,
+          "percentage": "74.0%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 25.0
+        },
+        {
+          "rank": 2,
+          "subcategory": "会员续费",
+          "amount": 8.8,
+          "count": 1,
+          "percentage": "26.0%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 8.8
+        }
+      ]
+    },
+    {
+      "category": "其他",
+      "total_amount": 1.8,
+      "total_percentage": "0.1%",
+      "subcategories": [
+        {
+          "rank": 1,
+          "subcategory": "杂项",
+          "amount": 1.8,
+          "count": 1,
+          "percentage": "100.0%",
+          "刚性固定": 0,
+          "刚性必要": 0,
+          "弹性支出": 1.8
+        }
+      ]
+    }
+  ],
+  "item_breakdown": [
+    {
+      "rank": 1,
+      "item_name": "绿能电动车",
+      "category": "交通",
+      "subcategory": "车辆维护",
+      "amount": 1499.52,
+      "count": 1,
+      "avg_per_transaction": 1499.52,
+      "total_percentage": "49.9%",
+      "刚性固定": 0,
+      "刚性必要": 1499.52,
+      "弹性支出": 0
+    },
+    {
+      "rank": 2,
+      "item_name": "嗖狗出行骑手服务中心",
+      "category": "交通",
+      "subcategory": "电池",
+      "amount": 208.9,
+      "count": 1,
+      "avg_per_transaction": 208.9,
+      "total_percentage": "7.0%",
+      "刚性固定": 208.9,
+      "刚性必要": 0,
+      "弹性支出": 0
+    },
+    {
+      "rank": 12,
+      "item_name": "家家悦超市",
+      "category": "购物",
+      "subcategory": "服饰鞋包",
+      "amount": 56.5,
+      "count": 2,
+      "avg_per_transaction": 28.25,
+      "total_percentage": "1.9%",
+      "刚性固定": 0,
+      "刚性必要": 36.8,
+      "弹性支出": 19.7
+    },
+    {
+      "rank": 23,
+      "item_name": "面道刀削面水饺",
+      "category": "餐饮",
+      "subcategory": "堂食",
+      "amount": 118.0,
+      "count": 10,
+      "avg_per_transaction": 11.8,
+      "total_percentage": "3.9%",
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 118.0
+    },
+    {
+      "rank": 24,
+      "item_name": "安徽王二板面",
+      "category": "餐饮",
+      "subcategory": "堂食",
+      "amount": 114.0,
+      "count": 9,
+      "avg_per_transaction": 12.67,
+      "total_percentage": "3.8%",
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 114.0
+    },
+    {
+      "rank": 25,
+      "item_name": "友客便利",
+      "category": "餐饮",
+      "subcategory": "日用消耗",
+      "amount": 93.28,
+      "count": 6,
+      "avg_per_transaction": 15.55,
+      "total_percentage": "3.1%",
+      "刚性固定": 0,
+      "刚性必要": 38.78,
+      "弹性支出": 54.5
+    },
+    {
+      "rank": 26,
+      "item_name": "小柴购超市",
+      "category": "餐饮",
+      "subcategory": "服饰鞋包",
+      "amount": 63.8,
+      "count": 2,
+      "avg_per_transaction": 31.9,
+      "total_percentage": "2.1%",
+      "刚性固定": 0,
+      "刚性必要": 37.3,
+      "弹性支出": 26.5
+    },
+    {
+      "rank": 27,
+      "item_name": "陈盛肥蛤",
+      "category": "餐饮",
+      "subcategory": "堂食",
+      "amount": 58.8,
+      "count": 1,
+      "avg_per_transaction": 58.8,
+      "total_percentage": "2.0%",
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 58.8
+    },
+    {
+      "rank": 28,
+      "item_name": "好想来零食乐园",
+      "category": "餐饮",
+      "subcategory": "零食",
+      "amount": 52.51,
+      "count": 11,
+      "avg_per_transaction": 4.77,
+      "total_percentage": "1.7%",
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 52.51
+    }
+  ],
+  "consumption_frequency": [
+    {
+      "range": "¥0-20",
+      "count": 96,
+      "刚性固定": 1,
+      "刚性必要": 4,
+      "弹性支出": 91,
+      "percentage": "84.2%"
+    },
+    {
+      "range": "¥20-50",
+      "count": 15,
+      "刚性固定": 0,
+      "刚性必要": 8,
+      "弹性支出": 7,
+      "percentage": "13.2%"
+    },
+    {
+      "range": "¥50-100",
+      "count": 1,
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 1,
+      "percentage": "0.9%"
+    },
+    {
+      "range": "¥100-200",
+      "count": 0,
+      "刚性固定": 0,
+      "刚性必要": 0,
+      "弹性支出": 0,
+      "percentage": "0.0%"
+    },
+    {
+      "range": "¥200-500",
+      "count": 1,
+      "刚性固定": 1,
+      "刚性必要": 0,
+      "弹性支出": 0,
+      "percentage": "0.9%"
+    },
+    {
+      "range": "¥500+",
+      "count": 1,
+      "刚性固定": 0,
+      "刚性必要": 1,
+      "弹性支出": 0,
+      "percentage": "0.9%"
+    }
+  ],
+  "high_frequency_items": [
+    {
+      "rank": 1,
+      "item": "好想来零食乐园",
+      "subcategory": "零食",
+      "count": 11,
+      "total": 52.51,
+      "avg": 4.77
+    },
+    {
+      "rank": 2,
+      "item": "面道刀削面水饺",
+      "subcategory": "堂食",
+      "count": 10,
+      "total": 118.0,
+      "avg": 11.8
+    },
+    {
+      "rank": 3,
+      "item": "安徽王二板面",
+      "subcategory": "堂食",
+      "count": 9,
+      "total": 114.0,
+      "avg": 12.67
+    },
+    {
+      "rank": 4,
+      "item": "津门太太里脊加烧饼",
+      "subcategory": "堂食",
+      "count": 7,
+      "total": 33.0,
+      "avg": 4.71
+    },
+    {
+      "rank": 5,
+      "item": "友客便利",
+      "subcategory": "日用消耗",
+      "count": 6,
+      "total": 93.28,
+      "avg": 15.55
+    },
+    {
+      "rank": 6,
+      "item": "鑫面客皖北正宗板面",
+      "subcategory": "堂食",
+      "count": 4,
+      "total": 49.5,
+      "avg": 12.38
+    },
+    {
+      "rank": 7,
+      "item": "商河老豆腐",
+      "subcategory": "堂食",
+      "count": 4,
+      "total": 18.0,
+      "avg": 4.5
+    },
+    {
+      "rank": 8,
+      "item": "加多金共享售水站",
+      "subcategory": "饮料",
+      "count": 4,
+      "total": 4.7,
+      "avg": 1.18
+    },
+    {
+      "rank": 9,
+      "item": "小柴购超市",
+      "subcategory": "服饰鞋包",
+      "count": 2,
+      "total": 63.8,
+      "avg": 31.9
+    },
+    {
+      "rank": 10,
+      "item": "luckincoffee",
+      "subcategory": "奶茶咖啡",
+      "count": 2,
+      "total": 13.32,
+      "avg": 6.66
+    }
+  ]
+}

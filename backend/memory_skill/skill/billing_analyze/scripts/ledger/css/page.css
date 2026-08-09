@@ -1,0 +1,272 @@
+/* ========== 页面专属样式 ========== */
+
+/* 记账页表格 */
+#page-ledger{max-width:none;}
+
+/* 筛选 / 排序工具栏 */
+.ledger-toolbar{
+  margin-bottom:14px;
+}
+.lt-search{
+  display:flex;gap:8px;margin-bottom:10px;
+}
+.lt-search .input{
+  flex:1;padding:9px 12px;font-size:14px;
+}
+.lt-filters{
+  display:flex;gap:8px;flex-wrap:wrap;
+}
+.lt-filters .input{
+  flex:1;min-width:120px;padding:8px 12px;font-size:13px;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A0A0A0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 10px center;
+  padding-right:28px;
+}
+/* 日期范围筛选行 */
+.lt-dates{
+  display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;
+}
+.lt-dates .input{
+  flex:1;min-width:130px;padding:8px 12px;font-size:13px;
+}
+.lt-date-label{font-size:12px;color:var(--ink-3);font-weight:600;flex-shrink:0;}
+.lt-date-sep{font-size:12px;color:var(--ink-3);flex-shrink:0;}
+.ledger-table thead th.sortable{
+  cursor:pointer;user-select:none;
+}
+.ledger-table thead th.sortable:hover{color:var(--mint-d);}
+
+.ledger-table-wrap{
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  margin:0 -4px;padding:0 4px;
+}
+.ledger-table{
+  width:100%;border-collapse:collapse;
+  font-size:13px;min-width:720px;
+}
+.ledger-table thead th{
+  position:sticky;top:0;z-index:1;
+  background:var(--card);
+  text-align:left;padding:8px 10px;
+  font-size:11px;font-weight:600;color:var(--ink-3);
+  border-bottom:2px solid var(--line);
+  white-space:nowrap;
+}
+.ledger-table tbody tr{
+  border-bottom:1px solid var(--bg);
+  transition:background .12s;
+}
+.ledger-table tbody tr:hover{background:var(--bg);}
+.ledger-table td{
+  padding:9px 10px;vertical-align:middle;
+  color:var(--ink-1);
+}
+.lt-date{font-size:12px;color:var(--ink-3);white-space:nowrap;}
+.lt-name{font-weight:500;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.lt-dir{white-space:nowrap;}
+.lt-badge{
+  display:inline-block;font-size:10px;font-weight:600;
+  padding:1px 8px;border-radius:8px;
+}
+.lt-badge.income{color:var(--mint-d);background:#5FB8A315;}
+.lt-badge.expense{color:var(--coral);background:#E8917A15;}
+.lt-amt{font-weight:700;white-space:nowrap;text-align:right;}
+.lt-amt.income{color:var(--mint-d);}
+.lt-amt.expense{color:var(--coral);}
+.lt-note{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-3);font-size:12px;}
+.ledger-table .record-del{
+  background:none;border:none;cursor:pointer;
+  color:var(--ink-3);opacity:.4;padding:4px;
+  display:flex;align-items:center;
+}
+.ledger-table .record-del:hover{opacity:1;color:var(--red);}
+
+/* 收支日历 */
+/* 让首页占满主区域（解除 base.css 中 .page 的 680px 限制），日历才能铺开 */
+#page-home{max-width:none;}
+.cal-card{width:100%;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-nav{
+  width:34px;height:34px;border-radius:50%;font-size:20px;
+  background:var(--bg);color:var(--mint-d);display:flex;
+  align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.cal-nav:hover{background:var(--mint-l);}
+.cal-title{font-size:15px;font-weight:700;color:var(--ink);}
+.cal-week{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+  margin-bottom:6px;text-align:center;
+}
+.cal-week span{font-size:12px;color:var(--ink-3);font-weight:600;padding:4px 0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-cell{
+  background:var(--bg);border-radius:var(--r-sm);
+  padding:8px 6px;min-height:78px;
+  display:flex;flex-direction:column;gap:4px;
+  cursor:pointer;transition:background .15s;
+}
+.cal-cell:hover{background:var(--mint-l);}
+.cal-cell.today{outline:2px solid var(--mint);outline-offset:-2px;}
+.cal-cell.selected{background:var(--mint-l);outline:2px solid var(--mint);outline-offset:-2px;}
+.cal-cell.selected .cal-day{color:var(--mint-d);}
+.cal-empty{background:transparent;cursor:default;}
+.cal-empty:hover{background:transparent;}
+.cal-day{font-size:14px;font-weight:700;color:var(--ink);text-align:center;}
+.cal-stats{display:flex;flex-direction:column;gap:2px;text-align:center;}
+.cal-exp{font-size:12px;color:var(--coral);font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-inc{font-size:12px;color:var(--mint-d);font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-none{font-size:12px;color:var(--ink-3);line-height:1.2;}
+.cal-legend{display:flex;gap:16px;justify-content:flex-end;margin-top:12px;font-size:12px;color:var(--ink-2);}
+.cal-legend .legend-item{display:inline-flex;align-items:center;gap:6px;}
+.cal-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.cal-legend .dot-exp{background:var(--coral);}
+.cal-legend .dot-inc{background:var(--mint-d);}
+
+/* 当日收支详情 */
+.cal-detail{
+  margin-top:16px;border-top:1.5px dashed var(--line);padding-top:14px;
+}
+.cal-detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cal-detail-title{font-size:15px;font-weight:700;color:var(--ink);}
+.cal-detail-total{display:flex;gap:10px;margin-bottom:14px;}
+.cd-stat{
+  flex:1;background:var(--bg);border-radius:var(--r-sm);
+  padding:10px;text-align:center;
+}
+.cd-stat .cd-label{display:block;font-size:11px;color:var(--ink-3);margin-bottom:4px;}
+.cd-stat .cd-val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
+.cd-val.inc{color:var(--mint-d);}
+.cd-val.exp{color:var(--coral);}
+.cd-sec{margin-bottom:12px;}
+.cd-sec-title{font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
+.cd-sec-count{font-size:11px;color:var(--ink-3);font-weight:400;background:var(--bg);border-radius:10px;padding:1px 8px;margin-left:4px;}
+.cd-empty{font-size:12px;color:var(--ink-3);padding:10px;text-align:center;background:var(--bg);border-radius:var(--r-sm);}
+.cd-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-bottom:1px solid var(--line);
+}
+.cd-item:last-child{border-bottom:none;}
+.cd-item-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cd-item-icon svg{width:17px;height:17px;}
+.cd-item-info{flex:1;min-width:0;}
+.cd-item-name{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cd-item-sub{font-size:11px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cd-item-amt{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.cd-item-amt.exp{color:var(--coral);}
+.cd-item-amt.inc{color:var(--mint-d);}
+
+/* 本月概览 · 三层支出分析（analyze_monthly.py 脚本结果） */
+.month-analysis{
+  margin-top:16px;background:var(--card);border-radius:var(--r);
+  padding:16px 18px;box-shadow:var(--shadow);
+}
+.ma-title{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:12px;}
+.ma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.ma-item{background:var(--bg);border-radius:var(--r-sm);padding:10px;text-align:center;}
+.ma-item .ma-label{display:block;font-size:11px;color:var(--ink-3);margin-bottom:4px;}
+.ma-item .ma-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
+.ma-val.inc{color:var(--mint-d);}
+.ma-val.exp{color:var(--coral);}
+.ma-extra{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.ma-tag{
+  font-size:12px;color:var(--ink-2);background:var(--bg);
+  border-radius:12px;padding:3px 10px;
+}
+.ma-tag.inc{color:var(--mint-d);font-weight:600;}
+.ma-tag.exp{color:var(--coral);font-weight:600;}
+
+/* 消费大类/细类明细（analyze_category_monthly.py 脚本结果） */
+.cat-list{margin-top:4px;}
+.cat-row{
+  border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:10px 12px;margin-bottom:8px;
+}
+.cat-row:not(.cat-no-sub){cursor:pointer;transition:background .15s;}
+.cat-row:not(.cat-no-sub):hover{background:var(--mint-l);}
+.cat-arrow{
+  font-size:11px;color:var(--mint-d);flex-shrink:0;width:12px;
+  transition:transform .2s;
+}
+.cat-row-head{display:flex;align-items:center;gap:10px;}
+.cat-name{font-size:13px;font-weight:700;color:var(--ink);flex:1;}
+.cat-amt{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+.cat-pct{font-size:12px;color:var(--ink-3);min-width:44px;text-align:right;}
+.cat-cnt{font-size:12px;color:var(--ink-3);min-width:40px;text-align:right;}
+.cat-row-head .exp{color:var(--coral);}
+.subcat-list{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px;}
+.subcat-list.collapsed{display:none;}
+.subcat-row{display:flex;align-items:center;gap:10px;padding:4px 0 4px 8px;}
+.subcat-name{font-size:12px;color:var(--ink-2);flex:1;}
+.subcat-amt{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;}
+.subcat-cnt{font-size:11px;color:var(--ink-3);min-width:34px;text-align:right;}
+.subcat-pct{font-size:11px;color:var(--ink-3);min-width:44px;text-align:right;}
+.subcat-amt.exp{color:var(--coral);}
+.ma-empty{font-size:12px;color:var(--ink-3);padding:8px;text-align:center;}
+
+/* ========== 记一笔表单 ========== */
+.dir-toggle{
+  display:flex;gap:8px;margin-bottom:14px;
+  background:var(--bg);border-radius:var(--r-sm);padding:4px;
+}
+.dir-btn{
+  flex:1;padding:9px 0;border-radius:8px;
+  font-size:14px;font-weight:600;color:var(--ink-3);
+  transition:all .15s;
+}
+.dir-btn.active{
+  background:var(--card);color:var(--mint-d);
+  box-shadow:0 1px 4px rgba(61,61,61,.08);
+}
+/* 收入激活时用珊瑚色区分 */
+.dir-btn[data-dir="收入"].active{
+  color:var(--coral);
+}
+
+.form-row{
+  display:flex;gap:12px;margin-bottom:12px;
+}
+.form-col{flex:1;min-width:0;}
+.form-row .form-col:only-child{flex:1;}
+
+#addRecordCard .input{
+  padding:10px 12px;font-size:15px;min-height:42px;
+}
+#addRecordCard select.input{
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A0A0A0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:32px;
+}
+
+/* ========== 资产负债页 ========== */
+#page-assets{max-width:680px;}
+
+/* 欠款进度条 */
+.debt-item{flex-wrap:wrap;}
+.debt-progress{
+  width:100%;height:4px;background:var(--bg);
+  border-radius:2px;margin-top:6px;overflow:hidden;
+}
+.debt-progress-bar{
+  height:100%;border-radius:2px;
+  transition:width .3s ease;
+}
+
+.asset-form{
+  margin-top:14px;padding-top:14px;border-top:1.5px dashed var(--line);
+}
+.asset-form .form-row{margin-bottom:10px;}
+.asset-form .input{
+  padding:10px 12px;font-size:15px;min-height:42px;
+}
+.asset-form select.input{
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A0A0A0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:32px;
+}

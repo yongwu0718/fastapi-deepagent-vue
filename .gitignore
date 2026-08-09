@@ -59,7 +59,7 @@ save_db/
 
 # Obsidian
 .obsidian/
-
+backend/memory_skill/skill/billing_analyze/scripts/data/ledger_settings.json
 # 运行日志
 *.log
 backend/logs/

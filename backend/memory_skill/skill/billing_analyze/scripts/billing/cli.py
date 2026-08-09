@@ -3,6 +3,7 @@
     python cli.py analyze billing                # 账单综合分析
     python cli.py analyze expense                # 支出专项分析
     python cli.py analyze monthly                # 三层逐月分析
+    python cli.py analyze category               # 每月大类/细类汇总
     python cli.py save-bill ...                  # 保存记录
     python cli.py save-income ...                # 保存收入记录
     python cli.py list-categories                # 列出所有分类约束
@@ -20,6 +21,7 @@ from common import DB_PATH
 from analyze_billing import _run_analysis as _run_billing
 from analyze_expense import _run_analysis as _run_expense
 from analyze_monthly import _run_analysis as _run_monthly
+from analyze_category_monthly import _run_analysis as _run_category_monthly
 
 from save_bill import save_bill as _save_bill, list_categories as _list_categories
 from save_income import save_income as _save_income
@@ -37,6 +39,11 @@ def cmd_analyze_expense(args):
 
 def cmd_analyze_monthly(args):
     result = _run_monthly(DB_PATH, args.start, args.end)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+def cmd_analyze_category(args):
+    result = _run_category_monthly(DB_PATH, args.start, args.end)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
@@ -84,6 +91,7 @@ def main():
         ("billing", cmd_analyze_billing),
         ("expense", cmd_analyze_expense),
         ("monthly", cmd_analyze_monthly),
+        ("category", cmd_analyze_category),
     ]:
         p = p_analyze_sub.add_parser(name)
         p.add_argument("--start", help="起始日期 YYYY-MM-DD")

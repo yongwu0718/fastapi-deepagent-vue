@@ -136,6 +136,7 @@ def save_changes(db, table, df_orig, df_edited, editor_key):
             ins += 1
         except Exception as e:
             errs.append(f"新增: {e}")
+            
 
     # —— 修改 ——
     for idx_s, ch in edited_rows.items():
@@ -215,13 +216,29 @@ st.sidebar.markdown("---")
 st.sidebar.header("🔍 筛选")
 schema = get_schema(db, sel_name)
 fcol = st.sidebar.selectbox("列:", ["（无）"] + [c["列名"] for c in schema])
-where_sql = ""
-where_params = []
+
+conditions = []
+params = []
 if fcol != "（无）":
     kw = st.sidebar.text_input("关键词:")
     if kw.strip():
-        where_sql = f'"{fcol}" LIKE ?'
-        where_params = [f"%{kw.strip()}%"]
+        conditions.append(f'"{fcol}" LIKE ?')
+        params.append(f"%{kw.strip()}%")
+
+# —— 日期筛选（可选，按某一天）——
+has_date_col = any(c["列名"] == "日期" for c in schema)
+if has_date_col:
+    st.sidebar.markdown("---")
+    if st.sidebar.toggle("📅 按日期筛选", value=False):
+        day = st.sidebar.date_input(
+            "日期", value=datetime.now().date(),
+            help="筛选该日期的数据",
+        )
+        conditions.append('"日期" = ?')
+        params.append(day.strftime("%Y-%m-%d"))
+
+where_sql = " AND ".join(conditions)
+where_params = params
 
 total = get_total(db, sel_name, where_sql, where_params)
 
@@ -297,17 +314,66 @@ else:
             # 按表名区分下拉选项
             if sel_name == "income_records":
                 cat_opts = INCOME_SOURCES
-                sub_opts = INCOME_SUBS
+                sub_map = INCOME_SUBCATEGORY_OPTIONS
+                all_sub_opts = INCOME_SUBS
                 dir_opts = ["收入"]
             else:
                 cat_opts = CATEGORIES
-                sub_opts = ALL_SUBCATEGORIES
+                sub_map = SUBCATEGORY_OPTIONS
+                all_sub_opts = ALL_SUBCATEGORIES
                 dir_opts = ["支出", "收入"]
+
+            # —— 级联新增表单 ——
+            with st.expander("➕ 新增记录（级联选择）", expanded=False):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    new_name = st.text_input("消费名称", key="new_name")
+                    new_cat = st.selectbox("消费大类", [""] + cat_opts, key="new_cat")
+                with c2:
+                    # 根据消费大类动态筛选消费细类
+                    sub_opts_filtered = [""] + (sub_map.get(new_cat, []) if new_cat else [])
+                    new_sub = st.selectbox("消费细类", sub_opts_filtered, key="new_sub")
+                    new_type = st.selectbox("消费类型", [""] + EXPENSE_TYPES, key="new_type")
+                with c3:
+                    new_dir = st.selectbox("类型", dir_opts, key="new_dir")
+                    new_platform = st.selectbox("支付平台", [""] + PLATFORMS, key="new_platform")
+                c4, c5, c6 = st.columns(3)
+                with c4:
+                    new_amount = st.number_input("金额", min_value=0.0, step=0.01, key="new_amount")
+                with c5:
+                    new_date = st.date_input("日期", value=datetime.now().date(), key="new_date")
+                with c6:
+                    new_note = st.text_input("备注", key="new_note")
+                if st.button("✅ 新增", type="primary"):
+                    if not new_name.strip():
+                        st.warning("请填写消费名称")
+                    elif not new_cat:
+                        st.warning("请选择消费大类")
+                    elif new_amount <= 0:
+                        st.warning("金额必须大于 0")
+                    else:
+                        try:
+                            db[sel_name].insert({
+                                "消费名称": new_name.strip(),
+                                "消费大类": new_cat,
+                                "消费细类": new_sub or None,
+                                "类型": new_dir,
+                                "金额": new_amount,
+                                "支付平台": new_platform or None,
+                                "日期": new_date.strftime("%Y-%m-%d"),
+                                "消费类型": new_type or None,
+                                "备注": new_note or None,
+                            })
+                            st.success(f"✅ 已新增: {new_name.strip()}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"新增失败: {e}")
 
             col_cfg = {
                 "rowid": None,
                 "消费大类": st.column_config.SelectboxColumn("消费大类", options=cat_opts, required=True),
-                "消费细类": st.column_config.SelectboxColumn("消费细类", options=sub_opts),
+                "消费细类": st.column_config.SelectboxColumn("消费细类", options=all_sub_opts),
                 "消费类型": st.column_config.SelectboxColumn("消费类型", options=EXPENSE_TYPES),
                 "类型": st.column_config.SelectboxColumn("类型", options=dir_opts, required=True),
                 "支付平台": st.column_config.SelectboxColumn("支付平台", options=PLATFORMS),

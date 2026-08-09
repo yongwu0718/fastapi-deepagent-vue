@@ -1,22 +1,24 @@
 # Index RAG — 智能知识库检索 Agent
 
 基于 **DeepAgents + LangGraph** 的深度智能体知识库检索系统，集成两阶段 RAG 检索、长期记忆、技能管理、人机交互审批（HITL）、Loop Engineering 条件驱动循环、检查点分支导航等能力，配备 Vue 3 流式对话前端。
+通过**openwiki**(https://github.com/langchain-ai/openwiki)管理项目的文档和代码。
 
 **注意：**
 
-mcp服务网站:
-魔搭平台:https://modelscope.cn/mcp
-阿里云百炼平台:https://bailian.console.aliyun.com/cn-beijing?tab=app#/mcp-market
-火山引擎平台:https://www.volcengine.com/ats
-skillhub平台网站:
-魔搭平台:https://modelscope.cn/skills
-skillhub平台:https://skillhub.cloud.tencent.com/skills?sortBy=score
-openclaw平台:https://clawhub.ai/skills
-hermes平台:https://hermes-agent.nousresearch.com/docs/skills
+**mcp服务网站:**
+- 魔搭平台:https://modelscope.cn/mcp
+- 阿里云百炼平台:https://bailian.console.aliyun.com/cn-beijing?tab=app#/mcp-market
+- 火山引擎平台:https://www.volcengine.com/ats
 
-自带mcp服务:
-使用百炼的mcp服务进行web搜索,
-集成了飞书的mcp服务,通过自然语言调用飞书的api接口.
+**skillhub平台网站:**
+- 魔搭平台:https://modelscope.cn/skills
+- skillhub平台:https://skillhub.cloud.tencent.com/skills?sortBy=score
+- openclaw平台:https://clawhub.ai/skills
+- hermes平台:https://hermes-agent.nousresearch.com/docs/skills
+
+**自带mcp服务:**
+- 使用百炼的mcp服务进行web搜索,
+- 集成了飞书的mcp服务,通过自然语言调用飞书的api接口.
 
 ---
 
@@ -28,18 +30,18 @@ hermes平台:https://hermes-agent.nousresearch.com/docs/skills
 | 🔍 两阶段 RAG 检索 | Chroma 向量召回 + DashScope gte-rerank-v2 重排序，含降级兜底 |
 | 📚 文档入库管道 | 前端 RAG 管理页：拖拽上传/路径填写 → 预览分块 → 确认入库 |
 | 🧠 长期记忆系统 | 独立记忆向量库，支持保存/搜索/删除/获取/列举 |
-| 🛠️ 技能管理 | 动态技能目录，运行时按需加载 |
-| 🤝 人机交互审批 | HITL 中断机制，高风险操作可审批/编辑/拒绝 |
+| 🛠️ 技能管理 | 动态技能目录，运行时按需加载（当前存在 SKILL.md 命名不匹配、子代理加载失败的已知问题） |
+| 🤝 人机交互审批 | HITL 中断机制已预留，默认 `interrupt_on` 为空，不触发中断 |
 | 🔄 Loop Engineering | 条件驱动循环，独立评估器对抗验证，未满足自动循环改进 |
 | 🌿 检查点分支 | 对话分支/重试/fork，支持检查点恢复 |
-| 📡 流式对话 | SSE 流式响应，8 种事件类型 |
+| 📡 流式对话 | SSE 流式响应，10 种事件类型 |
 | 📎 文件附件 | 支持 PDF / DOCX 上传，自动文本提取 |
-| 🔧 多模型切换 | 运行时切换 DeepSeek / Ollama / 阿里云 / Moonshot，配置热更新 |
+| 🔧 多模型切换 | 运行时切换 DeepSeek / Ollama / 阿里云（Moonshot 配置未打通，选中时实际回退 DeepSeek），配置热更新 |
 | 📊 可观测性 | Langfuse 全链路追踪 |
 | 📱 微信机器人 | 扫码登录，支持文本/文件对话，自动附件提取，会话隔离 |
-| 💻 三端运行 | Web 前端 + CLI 命令行交互 + 微信机器人 |
+| 💻 四端运行 | Web 前端 + CLI 命令行交互 + 微信机器人 + Electron 桌面壳 |
 
-> 详细功能说明、架构设计、配置参考见 [项目框架文档](./docs/项目框架.md)。
+> 详细功能说明、架构设计、配置参考见 [OpenWiki 项目文档](./openwiki/index.md)。
 
 ---
 
@@ -62,11 +64,11 @@ hermes平台:https://hermes-agent.nousresearch.com/docs/skills
 │  ┌──────────────────────▼────────────────────────────┐  │
 │  │            Main Agent (LangGraph 编译)             │  │
 │  │  系统提示词 · 工具集 · 中断配置 · 组合后端 · 中间件  │  │
-│  │  （摘要/截断/代码解释器/Rubric 评估循环）            │  │
+│  │  （截断/代码解释器/Rubric 评估循环）                │  │
 │  └──────────────────────┬────────────────────────────┘  │
 │                         │                                │
 │  ┌─────────┬────────────┼────────────┬───────────────┐  │
-│  │ RAG 检索 │ 长期记忆   │ MCP 工具    │ 账单分析工具   │  │
+│  │ RAG 检索 │ 长期记忆   │ MCP 工具    │ 技能/子代理    │  │
 │  └────┬────┴─────┬──────┴──────┬─────┴───────┬───────┘  │
 └───────┼──────────┼─────────────┼─────────────┼──────────┘
         │          │             │             │
@@ -76,7 +78,7 @@ hermes平台:https://hermes-agent.nousresearch.com/docs/skills
    └─────────┘ └────────┘ └─────────────┘ └────────┘
 ```
 
-后端采用分层架构（API 路由层 → 服务层 → Agent 核心层 → 工具/数据层），前端采用模块化组合式架构，全部组件自研。详见 [项目框架文档](./docs/项目框架.md)。
+后端采用分层架构（API 路由层 → 服务层 → Agent 核心层 → 工具/数据层），前端采用模块化组合式架构，全部组件自研。详见 [OpenWiki 架构文档](./openwiki/architecture/overview.md)。
 
 ---
 
@@ -87,7 +89,7 @@ hermes平台:https://hermes-agent.nousresearch.com/docs/skills
 - Python >= 3.12
 - Node.js（建议 >= 18）
 - [uv](https://github.com/astral-sh/uv)（Python 包管理）
-- Ollama（本地 Embedding 模型服务）
+- Ollama（本地 Embedding 模型服务，`my-qwen3-embed:latest`；Chroma 客户端在导入时打开，后端启动必须有 Ollama 可达）
 
 ### 后端启动
 
@@ -100,8 +102,14 @@ uv sync
 
 # 3. 配置环境变量（首次从模板复制）
 copy .env.example .env
-copy .env_key.example .env_key
+copy .env.api_key.example .env.api_key
 
+# 注意：`.env.example` 缺少后端读取必需的两个路径变量，复制后必须手动补充，
+# 否则后端会在导入时报 `open(None)` TypeError 而无法启动：
+#   MODEL_CONFIG_PATH=model_config.yaml
+#   RAG_CONFIG_PATH=backend/api/markdown_rag/rag_config.yaml
+# 并把过期的 MCP_SERVER_DIR 改为真实路径：
+#   MCP_SERVER_DIR=backend/core/mcp/mcp_server.json
 
 # 4. 启动后端服务（默认 http://localhost:8000）
 # 方式 A：菜单式 CLI
@@ -140,7 +148,7 @@ python backend/wechat_bot.py
 # 扫描终端显示的二维码即可在微信中对话
 ```
 
-> 微信机器人享有与 Web 前端相同的 Agent 全能力（RAG 检索、长期记忆、技能管理、HITL 等）。凭据在 24 小时内有效，过期后需重新扫码。
+> 微信机器人享有与 Web 前端相同的 Agent 全能力（RAG 检索、长期记忆、技能管理等）。凭据在 24 小时内有效，过期后需重新扫码。
 
 ### 文档入库
 

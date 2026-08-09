@@ -21,36 +21,35 @@ AMOUNT_BUCKETS = [
 # ═══════════════════════════════════════════════════════════
 
 def load_data(db_path: str, start_date: str | None = None, end_date: str | None = None) -> dict:
-    """从 records_view 加载支出数据，返回结构化的原始数据包。
+    """从 billing_records 表加载支出数据，返回结构化的原始数据包。
 
-    records_view 列: id, 名称, 大类, 细类, 金额, 平台, 日期, 收支类型, 分类, 年月
-    金额约定: 支出为负, 收入为正
+    billing_records 列: id, 消费名称, 消费大类, 消费细类, 类型, 金额, 支付平台, 日期, 消费类型, 备注
+    金额约定: 表中"金额"为绝对值正数，方向由"类型"区分（'支出' / '收入'）
     """
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # 支出
-    where, params = build_date_filter("金额 < 0", start_date, end_date)
-    cur.execute(f"SELECT * FROM records_view WHERE {where} ORDER BY 日期", params)
+    # 支出（类型 = '支出'）
+    where, params = build_date_filter("类型 = '支出'", start_date, end_date)
+    cur.execute(f"SELECT * FROM billing_records WHERE {where} ORDER BY 日期", params)
     rows = cur.fetchall()
 
     records = []
     for r in rows:
-        expense_abs = abs(r["金额"])
         records.append({
             "date":         r["日期"],
-            "item":         r["名称"],
-            "cat":          r["大类"],
-            "subcat":       r["细类"] or "未分类",
-            "amt":          expense_abs,
-            "plat":         r["平台"],
-            "expense_type": r["分类"] or "未分类",
+            "item":         r["消费名称"],
+            "cat":          r["消费大类"],
+            "subcat":       r["消费细类"] or "未分类",
+            "amt":          abs(r["金额"]),
+            "plat":         r["支付平台"],
+            "expense_type": r["消费类型"] or "未分类",
         })
 
-    # 收入总额（用于头部的收支对比）
-    inc_where, inc_params = build_date_filter("金额 > 0", start_date, end_date)
-    cur.execute(f"SELECT SUM(金额) FROM records_view WHERE {inc_where}", inc_params)
+    # 收入总额（用于头部的收支对比，来源 income_records）
+    inc_where, inc_params = build_date_filter("类型 = '收入'", start_date, end_date)
+    cur.execute(f"SELECT SUM(金额) FROM income_records WHERE {inc_where}", inc_params)
     income_total = cur.fetchone()[0] or 0.0
     conn.close()
 
@@ -316,7 +315,7 @@ def _run_analysis(db_path: str, start_date: str | None = None, end_date: str | N
 def analyze_expense(start_date: str | None = None, end_date: str | None = None) -> dict:
     """支出专项分析 — 层级结构、项目明细、消费频次、高频消费、类别深度追踪。
 
-    从 records_view 读取，金额约定：支出 < 0，收入 > 0。
+    从 billing_records 表读取，金额约定：表中"金额"为绝对值，方向由"类型"区分。
 
     Args:
         start_date: 起始日期 "YYYY-MM-DD"

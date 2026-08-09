@@ -92,7 +92,7 @@
 
 示例 2（陈述性记忆——保存事实信息）：
 用户：我的项目路径是 F:/index_rag/knowledge-base
-代理：调用 save_memory(memory_key="user_project_path", memory_value={"content": "用户的 RAG 项目路径", "category": "事实", "importance": 0.7, "metadata": {"path": "F:/index_rag/knowledge-base"}})
+代理：调用 save_memory(memory_key="user_project_path", memory_value={{"content": "用户的 RAG 项目路径", "category": "事实", "importance": 0.7, "metadata": {{"path": "F:/index_rag/knowledge-base"}}}})
 
 示例 3（删除记忆——先确认）：
 代理发现某条记忆已过时 → 先告知用户"以下记忆可能已过时：xxx，是否删除？" → 用户确认后调用 delete_memory。

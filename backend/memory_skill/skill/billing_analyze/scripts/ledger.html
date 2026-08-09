@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F7F4EF">
+<title>打工人小账本</title>
+<link rel="stylesheet" href="ledger/css/base.css">
+<link rel="stylesheet" href="ledger/css/page.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- ============ 顶部栏 ============ -->
+  <header class="appbar">
+    <button class="appbar-menu" onclick="toggleSidebar()" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h1 class="appbar-title">🐷 打工人小账本</h1>
+  </header>
+
+  <!-- ============ 抽屉遮罩 ============ -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ============ 抽屉式侧栏 ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-title">🐷 打工人小账本</div>
+      <div class="logo-sub">时间就是钱，花对每一分</div>
+    </div>
+    <nav class="nav" id="navDesktop">
+      <div class="nav-item active" data-page="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        首页
+      </div>
+      <div class="nav-item" data-page="ledger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18H5z M9 8h6 M9 12h6 M9 16h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        记账
+      </div>
+      <div class="nav-item" data-page="assets">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        资产负债
+      </div>
+    </nav>
+    <div class="sidebar-foot" id="sidebarFoot"></div>
+  </aside>
+
+  <!-- ============ 主区域 ============ -->
+  <main class="main">
+
+    <!-- ===== 首页 ===== -->
+    <section class="page active" id="page-home">
+
+      <!-- 日历 -->
+      <div class="card cal-card" id="calCard">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18" stroke-linecap="round"/></svg>
+          收支日历
+        </div>
+        <div class="cal-head">
+          <button class="cal-nav" onclick="calPrevMonth()">‹</button>
+          <div class="cal-title" id="calTitle"></div>
+          <button class="cal-nav" onclick="calNextMonth()">›</button>
+        </div>
+        <div class="cal-week">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend">
+          <span class="legend-item"><i class="dot-exp"></i>支出</span>
+          <span class="legend-item"><i class="dot-inc"></i>收入</span>
+        </div>
+        <!-- 选中日详情 -->
+        <div id="calDayDetail"></div>
+      </div>
+
+      <!-- 月度概览 -->
+      <div class="section-h">本月概览</div>
+      <div class="stat-grid" id="monthStats"></div>
+      <div id="categoryAnalysis"></div>
+
+      <!-- 最近记录 -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>
+          最近记录
+          <span class="more" onclick="switchPage('ledger')">查看全部 ›</span>
+        </div>
+        <div id="recentRecords"></div>
+      </div>
+    </section>
+
+    <!-- ===== 记账 ===== -->
+    <section class="page" id="page-ledger">
+
+      <!-- 记一笔 -->
+      <div class="card" id="addRecordCard">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+          记一笔
+        </div>
+
+        <!-- 收支切换 -->
+        <div class="dir-toggle" id="dirToggle">
+          <button class="dir-btn active" data-dir="支出" type="button">支出</button>
+          <button class="dir-btn" data-dir="收入" type="button">收入</button>
+        </div>
+
+        <!-- 金额 + 日期 -->
+        <div class="form-row">
+          <div class="form-col" style="flex:2">
+            <label class="label">金额</label>
+            <input class="input" type="number" id="addAmount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+          </div>
+          <div class="form-col" style="flex:3">
+            <label class="label">日期</label>
+            <input class="input" type="date" id="addDate">
+          </div>
+        </div>
+
+        <!-- 名称 -->
+        <div class="form-row">
+          <div class="form-col">
+            <label class="label">名称</label>
+            <input class="input" type="text" id="addName" placeholder="如：午餐·外卖" maxlength="40">
+          </div>
+        </div>
+
+        <!-- 大类 + 细类（级联） -->
+        <div class="form-row">
+          <div class="form-col">
+            <label class="label">大类</label>
+            <select class="input" id="addCategory"></select>
+          </div>
+          <div class="form-col">
+            <label class="label">细类</label>
+            <select class="input" id="addSubcategory"></select>
+          </div>
+        </div>
+
+        <!-- 消费类型（仅支出） + 支付平台 -->
+        <div class="form-row" id="expenseTypeRow">
+          <div class="form-col">
+            <label class="label">消费类型</label>
+            <select class="input" id="addExpenseType"></select>
+          </div>
+          <div class="form-col">
+            <label class="label">支付平台</label>
+            <select class="input" id="addPlatform"></select>
+          </div>
+        </div>
+
+        <!-- 备注 -->
+        <div class="form-row">
+          <div class="form-col">
+            <label class="label">备注</label>
+            <input class="input" type="text" id="addNote" placeholder="可选" maxlength="80">
+          </div>
+        </div>
+
+        <button class="btn btn-mint btn-block" id="addRecordBtn" type="button" style="margin-top:16px;">✅ 保存</button>
+      </div>
+
+      <!-- 全部记录 -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>
+          全部记录
+          <span class="more" id="recordCount"></span>
+        </div>
+        <div id="allRecords"></div>
+      </div>
+    </section>
+
+    <!-- ===== 资产负债 ===== -->
+    <section class="page" id="page-assets">
+
+      <!-- 净资产概览 -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          净资产概览
+        </div>
+        <div class="stat-grid" id="assetsOverview"></div>
+      </div>
+
+      <!-- 余额管理 -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10v8h14v-8M9 14h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          余额管理
+          <span class="more" id="balanceCount"></span>
+        </div>
+        <div id="balanceList"></div>
+
+        <!-- 新增余额表单 -->
+        <div class="asset-form" id="balanceForm">
+          <div class="form-row">
+            <div class="form-col" style="flex:3">
+              <label class="label">名称</label>
+              <input class="input" type="text" id="balName" placeholder="如：支付宝余额" maxlength="20">
+            </div>
+            <div class="form-col" style="flex:2">
+              <label class="label">金额</label>
+              <input class="input" type="number" id="balAmount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-col">
+              <label class="label">平台</label>
+              <select class="input" id="balPlatform"></select>
+            </div>
+            <div class="form-col">
+              <label class="label">备注</label>
+              <input class="input" type="text" id="balNote" placeholder="可选" maxlength="40">
+            </div>
+          </div>
+          <button class="btn btn-mint btn-block" id="addBalanceBtn" type="button" style="margin-top:12px;">＋ 添加余额</button>
+        </div>
+      </div>
+
+      <!-- 欠款管理 -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4M12 16v.01M22 12a10 10 0 11-20 0 10 10 0 0120 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          欠款管理
+          <span class="more" id="debtCount"></span>
+        </div>
+        <div id="debtList"></div>
+
+        <!-- 新增欠款表单 -->
+        <div class="asset-form" id="debtForm">
+          <div class="form-row">
+            <div class="form-col" style="flex:3">
+              <label class="label">名称</label>
+              <input class="input" type="text" id="debtName" placeholder="如：信用卡欠款" maxlength="20">
+            </div>
+            <div class="form-col" style="flex:2">
+              <label class="label">总金额</label>
+              <input class="input" type="number" id="debtAmount" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+            </div>
+            <div class="form-col" style="flex:2">
+              <label class="label">剩余应还</label>
+              <input class="input" type="number" id="debtRemaining" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-col">
+              <label class="label">类型</label>
+              <select class="input" id="debtType">
+                <option value="信用卡">信用卡</option>
+                <option value="花呗">花呗</option>
+                <option value="借款">借款</option>
+                <option value="房贷">房贷</option>
+                <option value="车贷">车贷</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="form-col">
+              <label class="label">到期日</label>
+              <input class="input" type="date" id="debtDueDate">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-col">
+              <label class="label">备注</label>
+              <input class="input" type="text" id="debtNote" placeholder="可选" maxlength="40">
+            </div>
+          </div>
+          <button class="btn btn-coral btn-block" id="addDebtBtn" type="button" style="margin-top:12px;">＋ 添加欠款</button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ Toast / Modal ============ -->
+<div class="toast-container" id="toastContainer"></div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-icon" id="modalIcon"></div>
+    <h3 id="modalTitle"></h3>
+    <p id="modalText"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-coral" id="modalConfirmBtn">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 编辑弹层（资产负债页） ============ -->
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal" style="max-width:420px">
+    <h3 id="editModalTitle" style="margin-bottom:16px"></h3>
+    <div id="editModalBody"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-outline" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-mint" id="editModalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 导入文件选择（隐藏） ============ -->
+<input type="file" id="importFile" accept=".json" style="display:none;">
+
+<!-- JS 模块（按依赖顺序引入） -->
+<script src="ledger/js/storage.js"></script>
+<script src="ledger/js/config.js"></script>
+<script src="ledger/js/ui.js"></script>
+<script src="ledger/js/record.js"></script>
+<script src="ledger/js/render-home.js"></script>
+<script src="ledger/js/render-ledger.js"></script>
+<script src="ledger/js/render-calendar.js"></script>
+<script src="ledger/js/render-assets.js"></script>
+<script src="ledger/js/main.js"></script>
+</body>
+</html>
