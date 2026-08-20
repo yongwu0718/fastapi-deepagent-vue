@@ -72,7 +72,12 @@ class VectorStoreCreator:
 
     def _create_vectorstore(self) -> Chroma:
         try:
-            embeddings = OllamaEmbeddings(model=self.model, base_url=self.base_url)
+            # trust_env=False: 绕过系统代理，避免本机 Ollama 请求被代理拦截返回 503
+            embeddings = OllamaEmbeddings(
+                model=self.model,
+                base_url=self.base_url,
+                client_kwargs={"trust_env": False},
+            )
             return Chroma(
                 collection_name=self.collection_name,
                 embedding_function=embeddings,

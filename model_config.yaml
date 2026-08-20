@@ -1,6 +1,6 @@
-active_provider: deepseek
+active_provider: ali
 deepseek:
-  model: deepseek-v4-pro
+  model: deepseek-v4-flash
   base_url: https://api.deepseek.com
   json_model: deepseek-v4-pro
   reasoning_effort: max
@@ -15,7 +15,7 @@ ollama:
   base_url: http://localhost:11434
   reasoning: low
 aliyun:
-  model: qwen3.8-max
+  model: qwen3.7-max-2026-05-17
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   enable_thinking: true
 openai:

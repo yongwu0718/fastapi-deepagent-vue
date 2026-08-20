@@ -67,9 +67,12 @@ llm_openai = ChatOpenAI(
 
 
 # ---------- 嵌入模型配置 ----------
+# client_kwargs={"trust_env": False}: 禁止 httpx 读取系统代理（Windows 注册表/环境变量）。
+# 否则本机 Ollama 的 embed 请求会被系统代理拦截转发，返回空 body 的 503。
 embeddings = OllamaEmbeddings(
     model=EMBEDDING_MODEL,
     base_url=EMBEDDING_BASE_URL,
+    client_kwargs={"trust_env": False},
 )
 
 # ---------- Reranker 模型配置 ----------

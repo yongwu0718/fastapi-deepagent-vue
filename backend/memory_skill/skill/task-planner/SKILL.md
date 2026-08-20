@@ -278,3 +278,22 @@ description: 当用户面临过多待办、想法杂乱或不知道从何开始�
 
 ### 输出目标
 - `assets\daily_plan_schema.json` — 步骤 5 每日计划 JSON 数据结构定义，输出时按此 schema 覆写。
+- `scripts\app\` — **可视化页面（Vue 3 + Vite + TypeScript 工程）**。构建后由 `scripts\serve.js` 托管。字段与 `daily_plan_schema.json` 的精力类型（deep/collaboration/shallow/learning）和状态枚举（planned/in-progress/done/backlog）保持一致。
+
+## 可视化页面模式
+
+当用户需要"日历视图"、"可视化排期"、"在页面上拖拽任务"或持久化跟踪任务完成与复盘时，引导用户使用可视化页面（而非纯对话输出）：
+
+- **使用方式**：
+  - 日常使用：`node scripts/serve.js` → http://localhost:8734（需先完成一次构建）
+  - 首次构建：`cd scripts/app && npm install && npm run build`
+  - 二次开发：`cd scripts/app && npm run dev`（vite 开发服务器 5173，`/api` 自动代理到 8734）
+- **工程结构**：`scripts/app/src/` 下按职责分层——`composables/`（usePlannerStore 数据层、useUiState 视图状态、useServerSync 服务器同步、useToast）、`components/`（calendar 日历、day 日面板、modals 弹窗、common 通用）、`utils/`（日期/格式化）、`types.ts`（与 schema 对齐的类型定义）。
+- **日历任务分配**：月视图日历，任务按精力类型着色（🔵深度 🟡沟通 ⚪机械 🟢学习），支持拖拽改期、时间块排期（开始时间/时长/所属块）。
+- **任务复盘**：每条任务可记录实际耗时与复盘笔记（带 📝 标记）。
+- **每日复盘**：今日亮点 / 遇到的问题 / 明日改进 + 精力状态评分（😫~🤩），已复盘日期在日历显示角标。
+- **随手池**：<15 分钟微任务独立区域，每日清空，与本工作流步骤 1.2 的微任务判断规则对应。
+- **数据存储**：所有变更防抖同步写入 `scripts\data\task-planner-data.json`（顶栏显示同步状态徽章）；localStorage 作为离线缓存，服务器为空时自动迁移上行。
+- **数据管理**：支持导出/导入 JSON 文件，可把按 `daily_plan_schema.json` 生成的计划 JSON 直接导入页面跟踪执行。
+
+注意：页面中的验证提示（日总量 ≤8h、深度 ≤4h、超 2 小时任务警告）为机械阈值；对话流程中仍按 5.1 节场景表（职场 4h/4.8h，全日制 3.5h/7h）执行更严格的容量控制。
